@@ -1,5 +1,7 @@
 import {
     Duration,
+    Fn,
+    aws_apigatewayv2 as apigatewayv2,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
     aws_s3 as s3,
@@ -9,6 +11,8 @@ import { Construct } from 'constructs'
 export interface MangaDistributionProps {
     readonly frontendBucket: s3.IBucket
     readonly mangaBucket: s3.IBucket
+    readonly httpApi: apigatewayv2.IHttpApi
+    readonly mangaKeyGroup: cloudfront.IKeyGroup
 }
 
 export function createDistribution(
@@ -44,25 +48,18 @@ function handler(event) {
         },
     )
 
-    // Phase 1ではSigned Cookieがまだ存在しない。
-    // OAC構成を先にsynth可能にしつつ漫画を公開しないため、/manga/*は常に403で閉じておく。
-    // Phase 2でTrusted Key Groupを追加した時点で、この一時ガードを置き換える。
-    const phaseOneMangaGuard = new cloudfront.Function(
+    // API GatewayのHostではなく、実際に利用者が開いたCloudFront hostをLogin Lambdaへ渡す。
+    // Lambdaはこの値を/manga/*だけに限定したSigned Cookie policyへ使用する。
+    const apiViewerHostFunction = new cloudfront.Function(
         scope,
-        'PhaseOneMangaGuard',
+        'ApiViewerHostFunction',
         {
             runtime: cloudfront.FunctionRuntime.JS_2_0,
             code: cloudfront.FunctionCode.fromInline(`
-function handler() {
-    return {
-        statusCode: 403,
-        statusDescription: 'Forbidden',
-        headers: {
-            'cache-control': { value: 'no-store' },
-            'content-type': { value: 'text/plain; charset=utf-8' }
-        },
-        body: 'Manga access is disabled until signed-cookie authentication is configured.'
-    };
+function handler(event) {
+    var request = event.request;
+    request.headers['x-manga-viewer-host'] = { value: request.headers.host.value };
+    return request;
 }
 `),
         },
@@ -74,6 +71,23 @@ function handler() {
     )
     const mangaOrigin = origins.S3BucketOrigin.withOriginAccessControl(
         props.mangaBucket,
+    )
+    const apiDomainName = Fn.select(2, Fn.split('/', props.httpApi.apiEndpoint))
+    const apiOrigin = new origins.HttpOrigin(apiDomainName, {
+        protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+    })
+    const apiOriginRequestPolicy = new cloudfront.OriginRequestPolicy(
+        scope,
+        'ApiOriginRequestPolicy',
+        {
+            cookieBehavior: cloudfront.OriginRequestCookieBehavior.all(),
+            headerBehavior: cloudfront.OriginRequestHeaderBehavior.allowList(
+                'content-type',
+                'x-manga-viewer-host',
+            ),
+            queryStringBehavior:
+                cloudfront.OriginRequestQueryStringBehavior.all(),
+        },
     )
 
     return new cloudfront.Distribution(scope, 'Distribution', {
@@ -100,6 +114,24 @@ function handler() {
             ],
         },
         additionalBehaviors: {
+            'api/*': {
+                origin: apiOrigin,
+                allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+                cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
+                cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+                compress: true,
+                originRequestPolicy: apiOriginRequestPolicy,
+                responseHeadersPolicy:
+                    cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
+                viewerProtocolPolicy:
+                    cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                functionAssociations: [
+                    {
+                        eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+                        function: apiViewerHostFunction,
+                    },
+                ],
+            },
             'manga/*': {
                 origin: mangaOrigin,
                 allowedMethods:
@@ -123,12 +155,7 @@ function handler() {
                     cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
                 viewerProtocolPolicy:
                     cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                functionAssociations: [
-                    {
-                        eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-                        function: phaseOneMangaGuard,
-                    },
-                ],
+                trustedKeyGroups: [props.mangaKeyGroup],
             },
         },
     })

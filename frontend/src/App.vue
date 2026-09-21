@@ -26,7 +26,7 @@ const getMaterialDetailWorkId = (path: string) =>
     path.match(/^\/works\/([^/]+)\/materials\/[^/]+\/?$/)?.[1]
 
 const logout = async () => {
-    authStore.logout()
+    await authStore.logout()
     await router.replace('/login')
 }
 
@@ -45,8 +45,7 @@ watch(
         const materialListWorkId = getMaterialListWorkId(toPath)
         const previousMaterialWorkId = getMaterialDetailWorkId(fromPath)
         const scrollTop =
-            materialListWorkId &&
-            materialListWorkId === previousMaterialWorkId
+            materialListWorkId && materialListWorkId === previousMaterialWorkId
                 ? (materialListScrollPositions.get(materialListWorkId) ?? 0)
                 : 0
 

@@ -5,9 +5,11 @@
 
 ## Windows / Node.js
 
+- 後からユーザー本人が実装意図を追えるよう、設計判断・セキュリティ上の理由・AWS固有の制約には日本語コメントを残す。コードを言い換えるだけのコメントではなく「なぜそうするか」を優先する。
 - PowerShellでは実行ポリシーにより `npm.ps1` が拒否されることがある。npmを実行するときは `npm` ではなく `C:\Program Files\nodejs\npm.cmd` を使用する。
 - このリポジトリは `.nvmrc` のNode.jsを前提とする。2026-09-21時点ではNode.js 24.18.0。
 - InfraはTypeScriptをJavaScriptへ出力しない。`infra/tsconfig.json` の `noEmit: true` を維持し、CDKアプリの実行には `tsx` を使う。
+- `NodejsFunction` のentryは `backend/` にあるため、bundle時の作業ディレクトリも `backend/` になる。`esbuild` は `backend/devDependencies` に置き、`depsLockFilePath` は `backend/package-lock.json` を指定する。
 - `ts-node` は現在のTypeScriptとの組み合わせでCDK synth時に失敗したため、再導入しない。発生したエラーは `Cannot read properties of undefined (reading 'fileExists')`。
 - npm registryへの接続で `UNABLE_TO_VERIFY_LEAF_SIGNATURE` が出る環境では、`NODE_OPTIONS=--use-system-ca` を設定する。
 - npm cacheの既定ディレクトリへ書き込めない場合は、Git無視済みの `D:\manga\.npm-cache` を `--cache` で指定する。

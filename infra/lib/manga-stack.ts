@@ -7,12 +7,17 @@ import {
     aws_s3_deployment as s3deploy,
 } from 'aws-cdk-lib'
 import { Construct } from 'constructs'
+import { createMangaApi } from './api'
+import { createViewerAuth } from './auth'
 import { createDistribution } from './distribution'
 import { createStorage } from './storage'
 
 export interface MangaStackProps extends StackProps {
     /** テスト時だけ小さなasset directoryへ差し替えられる。通常はfrontend/distを使用する。 */
     readonly frontendAssetPath?: string
+    readonly viewerPasswordParameterName?: string
+    readonly cloudFrontPrivateKeyParameterName?: string
+    readonly signedCookieTtlSeconds?: number
 }
 
 export class MangaStack extends Stack {
@@ -24,9 +29,23 @@ export class MangaStack extends Stack {
         super(scope, id, props)
 
         const { frontendBucket, mangaBucket } = createStorage(this)
+        const { publicKey, keyGroup } = createViewerAuth(this)
+        const { httpApi } = createMangaApi(this, {
+            cloudFrontKeyPairId: publicKey.publicKeyId,
+            viewerPasswordParameterName:
+                props.viewerPasswordParameterName ??
+                '/manga/viewer-password-hash',
+            cloudFrontPrivateKeyParameterName:
+                props.cloudFrontPrivateKeyParameterName ??
+                '/manga/cloudfront-private-key',
+            signedCookieTtlSeconds:
+                props.signedCookieTtlSeconds ?? 24 * 60 * 60,
+        })
         const distribution = createDistribution(this, {
             frontendBucket,
             mangaBucket,
+            httpApi,
+            mangaKeyGroup: keyGroup,
         })
 
         // 漫画画像はCDK assetへ含めない。ここで配布するのはfrontend/distのSPA成果物だけ。
@@ -48,6 +67,7 @@ export class MangaStack extends Stack {
             distribution,
             frontendBucket.bucketName,
             mangaBucket.bucketName,
+            httpApi.apiEndpoint,
         )
     }
 
@@ -55,6 +75,7 @@ export class MangaStack extends Stack {
         distribution: cloudfront.Distribution,
         frontendBucketName: string,
         mangaBucketName: string,
+        apiEndpoint: string,
     ): void {
         // 初期構築は独自ドメインを必須にしないため、CloudFront標準URLを正規の接続先として出力する。
         new CfnOutput(this, 'SiteUrl', {
@@ -71,6 +92,11 @@ export class MangaStack extends Stack {
             description:
                 'Retained bucket; deleting the stack does not delete it',
             value: mangaBucketName,
+        })
+        new CfnOutput(this, 'ApiEndpoint', {
+            description:
+                'Direct HTTP API endpoint; normal browser use should go through CloudFront /api/*',
+            value: apiEndpoint,
         })
     }
 }

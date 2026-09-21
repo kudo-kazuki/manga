@@ -4,8 +4,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
-const username = ref('')
 const password = ref('')
 const errorMessage = ref('')
 const isSubmitting = ref(false)
@@ -25,14 +25,23 @@ const submit = async () => {
     isSubmitting.value = true
     errorMessage.value = ''
 
-    const isValid = await authStore.login(username.value, password.value)
+    const result = await authStore.login(password.value)
 
-    if (isValid) {
-        await router.replace('/')
+    if (result === 'success') {
+        const redirect =
+            typeof route.query.redirect === 'string' &&
+            route.query.redirect.startsWith('/') &&
+            !route.query.redirect.startsWith('//')
+                ? route.query.redirect
+                : '/'
+        await router.replace(redirect)
         return
     }
 
-    errorMessage.value = 'ユーザー名またはパスワードが違います。'
+    errorMessage.value =
+        result === 'invalid-credentials'
+            ? 'パスワードが違います。'
+            : '通信に失敗しました。時間をおいて再度お試しください。'
     isSubmitting.value = false
     await shakeForm()
 }
@@ -52,20 +61,10 @@ const submit = async () => {
                 src="@/assets/images/fire.gif"
                 alt=""
             />
-            <h1 class="LoginPage__title">Novels</h1>
+            <h1 class="LoginPage__title">Manga</h1>
             <p class="LoginPage__description">ログインしてください。</p>
 
             <form class="LoginPage__form" @submit.prevent="submit">
-                <label class="LoginPage__field">
-                    <span class="LoginPage__label">ユーザー名</span>
-                    <el-input
-                        v-model="username"
-                        name="username"
-                        autocomplete="username"
-                        autofocus
-                    />
-                </label>
-
                 <label class="LoginPage__field">
                     <span class="LoginPage__label">パスワード</span>
                     <el-input
@@ -73,6 +72,7 @@ const submit = async () => {
                         type="password"
                         name="password"
                         autocomplete="current-password"
+                        autofocus
                         show-password
                     />
                 </label>

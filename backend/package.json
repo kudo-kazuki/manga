@@ -1,0 +1,21 @@
+{
+    "name": "manga-backend",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "dependencies": {
+        "@aws-sdk/client-ssm": "^3.896.0"
+    },
+    "devDependencies": {
+        "@types/aws-lambda": "^8.10.152",
+        "@types/node": "^24.13.3",
+        "esbuild": "^0.28.0",
+        "typescript": "^6.0.3",
+        "vitest": "^5.0.1"
+    }
+}
