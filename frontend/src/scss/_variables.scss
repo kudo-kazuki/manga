@@ -1,0 +1,9 @@
+$primary-color: #3498db;
+$secondary-color: #2ecc71;
+$text-color1: #08192d;
+
+$contentWidth: 1300px;
+
+@function vw($value) {
+    @return calc(#{$value}vw * 100 / 1224);
+}

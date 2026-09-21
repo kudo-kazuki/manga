@@ -1,0 +1,63 @@
+@use 'variables' as var;
+
+@mixin center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@mixin text-outline($thickness, $color: #000, $extra-shadow: null) {
+  $shadow: ();
+  /* 8方向の縁取りを生成 */
+  @for $i from -1 through 1 {
+    @for $j from -1 through 1 {
+      @if $i != 0 or $j != 0 {
+        $shadow: append($shadow, calc(#{$i} * #{$thickness}) calc(#{$j} * #{$thickness}) 0 $color, comma);
+      }
+    }
+  }
+  
+  /* 追加のシャドウ（ドロップシャドウ等）があれば結合 */
+  @if $extra-shadow {
+    $shadow: append($shadow, $extra-shadow, comma);
+  }
+  
+  text-shadow: $shadow;
+}
+
+@mixin page {
+    display: flex;
+    flex-direction: column;
+    width: var.$contentWidth;
+    margin: 0 auto;
+    height: 100%;
+    padding: 16px;
+    row-gap: 16px;
+
+    @media (max-width: (var.$contentWidth + 20px)) {
+        width: 100%;
+    }
+
+    @media (max-width: 767px) {
+        row-gap: 12px;
+        padding: 12px;
+    }
+}
+
+/**
+ * クリック時の元気な拡縮アニメーション
+ * $hover-scale: ホバー時のスケール
+ */
+@mixin click-animation($hover-scale: 1.08) {
+    /* 離した時に元のサイズに戻る動き（最大級の弾み） */
+    transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 2.5);
+    user-select: none;
+
+    /* ホバー時：少しだけ浮き上がる */
+    &:hover:not(:disabled):not(.is-disabled):not(.is-inactive):not(.is-on-cooldown) {
+        transform: scale($hover-scale);
+        transition: transform 0.1s ease-out;
+    }
+
+    /* クリック時：ガツンと大きく膨らむ */
+}

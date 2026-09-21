@@ -1,0 +1,224 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+body {
+    font-family:
+        'Noto Sans JP', 'メイリオ', Meiryo, 'ヒラギノ角ゴ Pro W3',
+        'Hiragino Kaku Gothic Pro', sans-serif;
+    font-size: 16px;
+    color: #050505;
+    line-height: 1.6;
+    background-color: #fff;
+    overflow-x: hidden;
+    transition: transform 0.5s ease;
+
+    @media (max-width: 767px) {
+        font-size: 14px;
+    }
+}
+
+a {
+    text-decoration: underline;
+    color: #2014c5;
+
+    &:hover {
+        text-decoration: none;
+    }
+}
+
+img {
+    max-width: 100%;
+}
+
+pre {
+    font-family: inherit;
+    white-space: pre-line;
+    word-break: break-all;
+}
+
+h1 {
+    font-size: 24px;
+
+    @media (max-width: 767px) {
+        font-size: 18px;
+    }
+}
+
+p + p {
+    margin-top: 12px;
+}
+
+a {
+    text-decoration: underline;
+
+    &:hover {
+        text-decoration: none;
+    }
+}
+
+input,
+button,
+textarea,
+select {
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    background-color: transparent;
+}
+
+input[type='text'],
+input[type='number'],
+input[type='password'],
+input[type='email'],
+input[type='url'],
+input[type='tel'],
+input[type='search'],
+input[type='date'],
+input[type='datetime-local'],
+input[type='month'],
+input[type='week'],
+input[type='time'],
+input[type='color'],
+textarea,
+select {
+    &:not(.el-input__inner) {
+        border: 1px solid #ccc;
+        padding: 0.5rem;
+        font-size: 1rem;
+        border-radius: 4px;
+        outline: none;
+        font-family: inherit;
+        width: 100%;
+
+        &:focus {
+            border-color: #007bff;
+        }
+
+        &.error {
+            border-color: #ec2222;
+        }
+
+        @media (max-width: 767px) {
+            font-size: 14px;
+        }
+    }
+}
+
+.errorMessage {
+    color: #ec2222;
+    margin-top: 4px;
+    font-size: 14px;
+}
+
+.el-popper {
+    z-index: 10000 !important;
+}
+.el-input,
+.el-select {
+    .el-input__wrapper,
+    .el-select__wrapper {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        font-family: inherit;
+        padding: 0.5rem;
+        font-size: 1rem;
+        height: 43px;
+
+        @media (max-width: 767px) {
+            font-size: 14px;
+        }
+    }
+
+    .el-select__placeholder {
+        color: inherit;
+    }
+}
+.el-date-editor.el-input.el-date-editor {
+    height: 43px;
+}
+
+.el-popper {
+    .el-select-dropdown__item {
+        color: inherit;
+    }
+}
+
+.table {
+    width: 100%;
+    border: 1px solid #cfcfcf;
+    margin: 12px 0;
+
+    thead {
+        tr {
+            th {
+                border: 1px solid #cfcfcf;
+                padding: 12px 12px;
+                vertical-align: middle;
+                background-color: #f8f7f4;
+                font-weight: bold;
+                text-align: center;
+            }
+        }
+    }
+
+    tbody {
+        text-align: left;
+
+        tr {
+            th,
+            td {
+                border: 1px solid #cfcfcf;
+                padding: 12px 12px;
+                vertical-align: middle;
+            }
+
+            th {
+                background-color: #f8f7f4;
+                font-weight: bold;
+            }
+        }
+    }
+
+    .hissu {
+        background-color: #c11d1d;
+        color: #fff;
+        display: inline-block;
+        margin-left: 8px;
+        padding: 0 4px;
+        font-size: 12px;
+    }
+
+    small {
+        display: block;
+        font-weight: normal;
+        font-size: 12px;
+    }
+
+    @media (max-width: 767px) {
+        border: none;
+
+        tbody {
+            tr,
+            th,
+            td {
+                display: block;
+            }
+
+            tr {
+                th,
+                td {
+                    width: 100%;
+                }
+
+                th + td {
+                    border-top: none;
+                }
+
+                & + tr {
+                    th {
+                        border-top: none;
+                    }
+                }
+            }
+        }
+    }
+}

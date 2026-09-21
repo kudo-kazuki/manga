@@ -1,0 +1,45 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.npm-cache
+dist
+dist-ssr
+cdk.out
+.cdk.staging
+*.tsbuildinfo
+.env.develop
+.env.localtest
+.env.production
+scripts/ftp.deploy.json
+src/config/auth.local.json
+
+# Infrastructure is type-checked and executed directly from TypeScript.
+# Keep accidental compiler output and CDK synthesis artifacts out of Git.
+/infra/**/*.js
+/infra/**/*.js.map
+/infra/**/*.d.ts
+/infra/**/*.d.ts.map
+/infra/*.pem
+/infra/.env
+/infra/.env.*
+
+# Private story idea notes
+/story-ideas/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
