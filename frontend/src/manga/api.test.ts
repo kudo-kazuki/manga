@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
     createPageImageUrl,
+    diagnoseImageLoadFailure,
     loadMangaIndex,
     MangaAuthenticationError,
     MangaDataError,
@@ -55,4 +56,21 @@ describe('Manga data API', () => {
             '/manga/work-test/003/002.webp',
         )
     })
+
+    it.each([
+        [403, 'authentication'],
+        [404, 'not-found'],
+        [500, 'network'],
+    ] as const)(
+        '画像失敗status %sを%sとして区別する',
+        async (status, expected) => {
+            vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+                new Response('', { status }),
+            )
+
+            await expect(
+                diagnoseImageLoadFailure('/manga/work/001/001.webp'),
+            ).resolves.toBe(expected)
+        },
+    )
 })

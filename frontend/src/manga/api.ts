@@ -134,3 +134,25 @@ export function createPageImageUrl(
     const fileName = `${String(pageNumber).padStart(3, '0')}.webp`
     return `/manga/${encodeURIComponent(workId)}/${encodeURIComponent(chapterId)}/${fileName}`
 }
+
+export type ImageLoadFailure = 'authentication' | 'not-found' | 'network'
+
+export async function diagnoseImageLoadFailure(
+    imageUrl: string,
+): Promise<ImageLoadFailure> {
+    try {
+        // img要素ではstatusを参照できないため、失敗した画像だけHEADで原因を分類する。
+        // 正常画像には追加requestを発生させない。
+        const response = await fetch(imageUrl, {
+            method: 'HEAD',
+            credentials: 'include',
+        })
+        if (response.status === 401 || response.status === 403) {
+            return 'authentication'
+        }
+        if (response.status === 404) return 'not-found'
+        return 'network'
+    } catch {
+        return 'network'
+    }
+}

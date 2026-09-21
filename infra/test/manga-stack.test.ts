@@ -15,6 +15,11 @@ const forbiddenResourcePrefixes = [
     'AWS::ElastiCache::',
     'AWS::OpenSearchService::',
     'AWS::StepFunctions::',
+    'AWS::SecretsManager::',
+    'AWS::WAF::',
+    'AWS::WAFv2::',
+    'AWS::Route53::',
+    'AWS::CertificateManager::',
 ]
 
 function synthesizeTemplate(): Record<string, unknown> {
@@ -70,6 +75,20 @@ describe('MangaStack', () => {
                         MaxAge: 900,
                     },
                 ],
+            },
+        })
+        template.hasResourceProperties('AWS::S3::BucketPolicy', {
+            PolicyDocument: {
+                Statement: Match.arrayWith([
+                    Match.objectLike({
+                        Action: 's3:ListBucket',
+                        Effect: 'Allow',
+                        Principal: { Service: 'cloudfront.amazonaws.com' },
+                        Condition: Match.objectLike({
+                            StringLike: { 's3:prefix': ['manga/*'] },
+                        }),
+                    }),
+                ]),
             },
         })
     })
@@ -197,5 +216,20 @@ describe('MangaStack', () => {
             )
 
         expect(forbiddenTypes).toEqual([])
+    })
+
+    it('固定費と不要な保存費を増やすlog・versioningを有効にしない', () => {
+        template.allResourcesProperties('AWS::S3::Bucket', {
+            LoggingConfiguration: Match.absent(),
+            VersioningConfiguration: Match.absent(),
+        })
+        template.hasResourceProperties('AWS::CloudFront::Distribution', {
+            DistributionConfig: {
+                Logging: Match.absent(),
+            },
+        })
+        template.allResourcesProperties('AWS::Logs::LogGroup', {
+            RetentionInDays: 7,
+        })
     })
 })

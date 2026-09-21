@@ -2,8 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import {
     createPageImageUrl,
+    diagnoseImageLoadFailure,
     loadMangaMetadata,
     MangaAuthenticationError,
+    type ImageLoadFailure,
     type MangaMetadata,
 } from '@/manga/api'
 
@@ -12,7 +14,9 @@ const router = useRouter()
 const metadata = ref<MangaMetadata | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref('')
-const imageError = ref(false)
+const imageError = ref<'' | ImageLoadFailure>('')
+let isDiagnosingImage = false
+let imageDiagnosisGeneration = 0
 
 const workId = computed(() =>
     typeof route.params.workId === 'string' ? route.params.workId : '',
@@ -52,10 +56,33 @@ const pageUrls = computed(() =>
 const chapterRoute = (targetChapterId: string) =>
     `/works/${encodeURIComponent(workId.value)}/${encodeURIComponent(targetChapterId)}`
 
+const imageErrorMessage = computed(() => {
+    if (imageError.value === 'authentication') {
+        return '閲覧セッションが切れました。再ログインしてください。'
+    }
+    if (imageError.value === 'not-found') {
+        return '画像が見つかりません。管理者へ確認してください。'
+    }
+    return '画像の通信に失敗しました。時間をおいて再読み込みしてください。'
+})
+
+const onImageError = async (url: string) => {
+    if (isDiagnosingImage || imageError.value) return
+    isDiagnosingImage = true
+    const generation = imageDiagnosisGeneration
+    const result = await diagnoseImageLoadFailure(url)
+    // HEAD待機中に別chapterへ移動した場合、古い画像の結果を新しい画面へ表示しない。
+    if (generation !== imageDiagnosisGeneration) return
+    imageError.value = result
+    isDiagnosingImage = false
+}
+
 const loadChapter = async () => {
     isLoading.value = true
     errorMessage.value = ''
-    imageError.value = false
+    imageError.value = ''
+    isDiagnosingImage = false
+    imageDiagnosisGeneration += 1
     try {
         metadata.value = await loadMangaMetadata(workId.value)
         if (!chapter.value) errorMessage.value = 'Chapterが見つかりません。'
@@ -103,8 +130,9 @@ watch(() => [workId.value, chapterId.value], loadChapter, { immediate: true })
             </header>
 
             <p v-if="imageError" class="ViewerPage__imageError" role="alert">
-                一部画像を読み込めませんでした。認証期限切れの可能性があります。
+                {{ imageErrorMessage }}
                 <router-link
+                    v-if="imageError === 'authentication'"
                     :to="{
                         path: '/login',
                         query: { redirect: route.fullPath },
@@ -122,7 +150,7 @@ watch(() => [workId.value, chapterId.value], loadChapter, { immediate: true })
                     :alt="`${chapter.title} ${index + 1}ページ`"
                     :loading="index < 2 ? 'eager' : 'lazy'"
                     decoding="async"
-                    @error="imageError = true"
+                    @error="onImageError(url)"
                 />
             </section>
 

@@ -487,53 +487,55 @@
 
 ## 6. セキュリティ確認
 
-- [ ] S3 Public Accessが完全に無効である。
+- [x] S3 Public Accessが完全に無効である。
 - [ ] S3 direct URLが403になる。
 - [ ] 未ログインの `/manga/*` が403になる。
 - [ ] ログイン後だけ `/manga/*` が200になる。
 - [ ] Signed Cookie期限切れ後に403へ戻る。
-- [ ] 未認証でPresign URLを取得できない。
-- [ ] 閲覧Cookieだけでは管理APIを呼べない。
-- [ ] path traversal入力を拒否する。
-- [ ] 任意S3 KeyへのPresignを発行しない。
-- [ ] secretがGit履歴、Frontend bundle、source mapにない。
-- [ ] password、private key、presigned URLがログにない。
-- [ ] IAM policyが対象Bucket/prefix/actionに限定されている。
-- [ ] CORSで `AllowedOrigins: *` を使用していない。
-- [ ] APIレスポンスに不要な内部情報を含めない。
+- [x] 未認証でPresign URLを取得できない。
+- [x] 閲覧Cookieだけでは管理APIを呼べない。
+- [x] path traversal入力を拒否する。
+- [x] 任意S3 KeyへのPresignを発行しない。
+- [x] secretがGit履歴、Frontend bundle、source mapにない。
+- [x] password、private key、presigned URLがログにない。
+- [x] IAM policyが対象Bucket/prefix/actionに限定されている。
+- [x] CORSで `AllowedOrigins: *` を使用していない。
+- [x] APIレスポンスに不要な内部情報を含めない。
+
+上記の未完了項目はdeploy後の実AWS E2Eで確認する。ローカルtestとsynthで検証できる項目は完了済み。
 
 ## 7. コスト確認
 
-- [ ] NAT Gatewayが存在しない。
-- [ ] ALB、EC2、ECS、Fargateが存在しない。
-- [ ] RDS、Aurora、DynamoDBが存在しない。
-- [ ] Secrets Managerを無条件に使用していない。
-- [ ] WAFを必須リソースとして作っていない。
-- [ ] Route 53とACMは独自ドメイン有効時だけ作る。
-- [ ] 不要なS3 versioning、access log、CloudFront logを有効にしない。
-- [ ] CloudWatch Logsの保持期間を明示する。
-- [ ] CloudFrontの料金プランとpay-as-you-goを比較する。
-- [ ] 画像数・平均サイズ・月間閲覧量別の概算をREADMEへ記載する。
-- [ ] 料金が発生し得る全リソースをREADMEへ列挙する。
+- [x] NAT Gatewayが存在しない。
+- [x] ALB、EC2、ECS、Fargateが存在しない。
+- [x] RDS、Aurora、DynamoDBが存在しない。
+- [x] Secrets Managerを無条件に使用していない。
+- [x] WAFを必須リソースとして作っていない。
+- [x] Route 53とACMは独自ドメイン有効時だけ作る。
+- [x] 不要なS3 versioning、access log、CloudFront logを有効にしない。
+- [x] CloudWatch Logsの保持期間を明示する。
+- [x] CloudFrontの料金プランとpay-as-you-goを比較する。
+- [x] 画像数・平均サイズ・月間閲覧量別の概算をREADMEへ記載する。
+- [x] 料金が発生し得る全リソースをREADMEへ列挙する。
 
 ## 8. README・運用手順
 
-- [ ] architecture図を記載する。
-- [ ] local development手順を記載する。
-- [ ] Node.jsとAWS CLIの前提を記載する。
-- [ ] CDK bootstrap手順を記載する。
-- [ ] SSM SecureString登録手順を記載する。
-- [ ] CloudFront key pair作成手順を記載する。
-- [ ] frontend build手順を記載する。
-- [ ] CDK deploy手順を記載する。
-- [ ] 初回CORS設定手順を記載する。
-- [ ] 漫画folder upload手順を記載する。
-- [ ] 独自ドメインなしのアクセスURL確認方法を記載する。
-- [ ] 任意の独自ドメイン追加手順を記載する。
-- [ ] XSERVERからRoute 53へのNS委任手順を記載する。
-- [ ] `cdk destroy` 時に漫画Bucketが残ることと注意点を記載する。
-- [ ] 保持されたBucketを手動削除する危険性を記載する。
-- [ ] backupが別途必要であることを記載する。
+- [x] architecture図を記載する。
+- [x] local development手順を記載する。
+- [x] Node.jsとAWS CLIの前提を記載する。
+- [x] CDK bootstrap手順を記載する。
+- [x] SSM SecureString登録手順を記載する。
+- [x] CloudFront key pair作成手順を記載する。
+- [x] frontend build手順を記載する。
+- [x] CDK deploy手順を記載する。
+- [x] 初回CORS設定手順を記載する。
+- [x] 漫画folder upload手順を記載する。
+- [x] 独自ドメインなしのアクセスURL確認方法を記載する。
+- [x] 任意の独自ドメイン追加手順を記載する。
+- [x] XSERVERからRoute 53へのNS委任手順を記載する。
+- [x] `cdk destroy` 時に漫画Bucketが残ることと注意点を記載する。
+- [x] 保持されたBucketを手動削除する危険性を記載する。
+- [x] backupが別途必要であることを記載する。
 
 ## 9. Phase別完了条件
 
@@ -579,11 +581,13 @@
 
 ### Phase 6: 品質・運用
 
-- [ ] BackendとFrontendの必須テストが成功する。
+- [x] BackendとFrontendの必須テストが成功する。
 - [ ] セキュリティ確認項目を満たす。
-- [ ] コスト確認項目を満たす。
-- [ ] READMEだけで初回構築と運用が可能である。
-- [ ] `cdk destroy` で漫画画像を誤削除しない。
+- [x] コスト確認項目を満たす。
+- [x] READMEだけで初回構築と運用が可能である。
+- [x] `cdk destroy` で漫画画像を誤削除しない。
+
+セキュリティ確認の残りはdeploy後の実AWS E2Eのみ。deploy前に実施できるPhase 6作業は完了済み。
 
 ## 10. 実装開始時の最初の作業
 

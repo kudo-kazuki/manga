@@ -4,6 +4,7 @@ import {
     aws_apigatewayv2 as apigatewayv2,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
+    aws_iam as iam,
     aws_s3 as s3,
 } from 'aws-cdk-lib'
 import { Construct } from 'constructs'
@@ -114,7 +115,7 @@ function handler(event) {
         },
     )
 
-    return new cloudfront.Distribution(scope, 'Distribution', {
+    const distribution = new cloudfront.Distribution(scope, 'Distribution', {
         comment: 'Private manga viewer',
         defaultRootObject: 'index.html',
         enableIpv6: true,
@@ -197,4 +198,21 @@ function handler(event) {
             },
         },
     })
+
+    // S3はListBucket権限がないprincipalに、存在しないobjectも404ではなく403で返す。
+    // Viewerが「認証切れ」と「画像欠損」を区別できるよう、CloudFront OACに漫画prefixの
+    // 存在判定だけを許可する。Browserや匿名principalへList権限を公開するものではない。
+    props.mangaBucket.addToResourcePolicy(
+        new iam.PolicyStatement({
+            actions: ['s3:ListBucket'],
+            principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+            resources: [props.mangaBucket.bucketArn],
+            conditions: {
+                StringEquals: { 'AWS:SourceArn': distribution.distributionArn },
+                StringLike: { 's3:prefix': ['manga/*'] },
+            },
+        }),
+    )
+
+    return distribution
 }

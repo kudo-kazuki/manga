@@ -29,6 +29,7 @@ src/config/auth.local.json
 /infra/*.pem
 /infra/.env
 /infra/.env.*
+/secrets/
 
 # Private story idea notes
 /story-ideas/

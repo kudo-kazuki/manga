@@ -163,6 +163,21 @@ describe('Presign handler', () => {
         expect(signedInputs).toHaveLength(0)
     })
 
+    it('閲覧用CloudFront Cookieだけでは管理Presignを許可しない', async () => {
+        signedInputs.length = 0
+        const viewerOnlyEvent = event(false)
+        viewerOnlyEvent.cookies = [
+            'CloudFront-Policy=viewer-policy',
+            'CloudFront-Signature=viewer-signature',
+            'CloudFront-Key-Pair-Id=viewer-key',
+        ]
+
+        const response = await handler(viewerOnlyEvent)
+
+        expect(response.statusCode).toBe(401)
+        expect(signedInputs).toHaveLength(0)
+    })
+
     it('認証済みrequestへmanga prefixのPUT URLを返す', async () => {
         signedInputs.length = 0
         const response = await handler(event(true))

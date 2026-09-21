@@ -4,6 +4,8 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "hash-password": "node scripts/hash-password.mjs",
+        "generate-signing-key": "node scripts/generate-signing-key.mjs",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "test:watch": "vitest"
