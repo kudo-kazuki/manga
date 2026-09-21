@@ -1,5 +1,7 @@
 # Phase 4: Presigned PUT / Progress / Retry 実装記録
 
+作業日: 2026-09-21
+
 ## 1. 実装範囲
 
 管理画面で選択した画像をBrowser内で1枚ずつWebPへ変換し、画像binaryをLambdaへ送らずS3へ直接PUTする経路を実装した。

@@ -1,5 +1,7 @@
 # Phase 5: metadata / 作品一覧 / Viewer 実装記録
 
+作業日: 2026-09-21
+
 ## 1. Upload完了処理
 
 `POST /api/upload/complete` を追加した。管理画面は全画像のPUT成功後だけ次の情報を送る。

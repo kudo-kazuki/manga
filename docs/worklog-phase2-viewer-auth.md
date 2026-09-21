@@ -1,5 +1,7 @@
 # Phase 2 閲覧認証 実装記録
 
+作業日: 2026-09-21
+
 - 実施日: 2026-09-21
 - 対象Phase: Phase 2「Signed Cookie / Login」のローカル実装とsynth確認
 - AWS環境への変更: なし

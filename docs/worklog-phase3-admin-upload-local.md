@@ -1,5 +1,7 @@
 # Phase 3 管理画面・ローカル画像処理 実装記録
 
+作業日: 2026-09-21
+
 - 実施日: 2026-09-21
 - 対象Phase: Phase 3「Admin / Directory D&D / Natural Sort / WebP」
 - AWS環境への変更: なし
