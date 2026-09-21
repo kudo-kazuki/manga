@@ -100,7 +100,13 @@ describe('MangaStack', () => {
 
     it('HTTP APIとcache無効の/api/* Behaviorを作成する', () => {
         template.resourceCountIs('AWS::ApiGatewayV2::Api', 1)
-        template.resourceCountIs('AWS::ApiGatewayV2::Route', 2)
+        template.resourceCountIs('AWS::ApiGatewayV2::Route', 5)
+        template.hasResourceProperties('AWS::ApiGatewayV2::Stage', {
+            DefaultRouteSettings: {
+                ThrottlingBurstLimit: 10,
+                ThrottlingRateLimit: 5,
+            },
+        })
         template.hasResourceProperties('AWS::CloudFront::Distribution', {
             DistributionConfig: {
                 CacheBehaviors: Match.arrayWith([
@@ -128,6 +134,10 @@ describe('MangaStack', () => {
         )
         expect(loginPolicy).toContain('parameter/manga/viewer-password-hash')
         expect(loginPolicy).toContain('parameter/manga/cloudfront-private-key')
+        const adminPolicy = policyDefinitions.find((definition) =>
+            definition.includes('parameter/manga/admin-password-hash'),
+        )
+        expect(adminPolicy).toContain('parameter/manga/admin-signing-key')
     })
 
     it('仕様で禁止されたAWSサービスを作成しない', () => {

@@ -1,9 +1,17 @@
 import { generateKeyPairSync, randomBytes, scryptSync } from 'node:crypto'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { describe, expect, it } from 'vitest'
+import { createAdminLoginHandler } from '../functions/admin-login.js'
+import { handler as adminLogoutHandler } from '../functions/admin-logout.js'
+import { createAdminSessionHandler } from '../functions/admin-session.js'
 import { createLoginHandler } from '../functions/login.js'
 import { handler as logoutHandler } from '../functions/logout.js'
-import type { RuntimeConfig } from '../shared/config.js'
+import {
+    ADMIN_COOKIE_NAME,
+    readCookie,
+    verifyAdminSession,
+} from '../shared/admin-session.js'
+import type { AdminRuntimeConfig, RuntimeConfig } from '../shared/config.js'
 import type { ParameterReader } from '../shared/parameters.js'
 
 const password = 'correct horse battery staple'
@@ -28,7 +36,10 @@ const parameters: ParameterReader = {
     },
 }
 
-function event(body: unknown, viewerHost = 'd111111abcdef8.cloudfront.net') {
+function event(
+    body: unknown,
+    viewerHost = 'd111111abcdef8.cloudfront.net',
+): APIGatewayProxyEventV2 {
     return {
         version: '2.0',
         routeKey: 'POST /api/login',
@@ -121,5 +132,115 @@ describe('viewer authentication', () => {
                     cookie.includes('Max-Age=0') && cookie.includes('HttpOnly'),
             ),
         ).toBe(true)
+    })
+})
+
+describe('admin authentication', () => {
+    const adminConfig: AdminRuntimeConfig = {
+        adminPasswordParameterName: '/manga/admin-password-hash',
+        adminSigningKeyParameterName: '/manga/admin-signing-key',
+        adminSessionTtlSeconds: 1800,
+    }
+    const signingKey = 'test-signing-key-with-enough-randomness'
+    const adminParameters: ParameterReader = {
+        async getSecureString(name) {
+            if (name === adminConfig.adminPasswordParameterName)
+                return passwordHash
+            if (name === adminConfig.adminSigningKeyParameterName)
+                return signingKey
+            throw new Error('Unexpected parameter')
+        },
+    }
+    const adminLogin = createAdminLoginHandler({
+        config: adminConfig,
+        parameters: adminParameters,
+        now: () => 1_800_000_000_000,
+    })
+
+    it('正しい管理passwordで検証可能な管理Cookieを返す', async () => {
+        const response = await adminLogin(event({ password }))
+        expect(response.statusCode).toBe(200)
+        expect(response.cookies).toHaveLength(1)
+
+        const cookieHeader = response.cookies?.[0]
+        const cookieValue = readCookie(
+            cookieHeader ? [cookieHeader] : [],
+            ADMIN_COOKIE_NAME,
+        )
+        expect(verifyAdminSession(cookieValue, signingKey, 1_800_000_100)).toBe(
+            true,
+        )
+    })
+
+    it('改ざん、期限切れ、異なる署名鍵を拒否する', async () => {
+        const response = await adminLogin(event({ password }))
+        const cookieValue = readCookie(response.cookies, ADMIN_COOKIE_NAME)
+        expect(
+            verifyAdminSession(`${cookieValue}x`, signingKey, 1_800_000_100),
+        ).toBe(false)
+        expect(
+            verifyAdminSession(cookieValue, 'different-key', 1_800_000_100),
+        ).toBe(false)
+        expect(verifyAdminSession(cookieValue, signingKey, 1_800_002_000)).toBe(
+            false,
+        )
+    })
+
+    it('session確認APIが有効Cookieだけを許可する', async () => {
+        const loginResponse = await adminLogin(event({ password }))
+        const session = createAdminSessionHandler({
+            signingKeyParameterName: adminConfig.adminSigningKeyParameterName,
+            parameters: adminParameters,
+            now: () => 1_800_000_100_000,
+        })
+        const validEvent = event(undefined)
+        validEvent.cookies = loginResponse.cookies
+        await expect(session(validEvent)).resolves.toMatchObject({
+            statusCode: 200,
+        })
+
+        const invalidEvent = event(undefined)
+        invalidEvent.cookies = [`${ADMIN_COOKIE_NAME}=tampered.value`]
+        await expect(session(invalidEvent)).resolves.toMatchObject({
+            statusCode: 401,
+        })
+    })
+
+    it('閲覧passwordとは別の管理password導出値で検証する', async () => {
+        const otherSalt = randomBytes(16)
+        const onlyAdminPassword = 'admin-only-password'
+        const isolatedParameters: ParameterReader = {
+            async getSecureString(name) {
+                if (name === adminConfig.adminPasswordParameterName) {
+                    return `scrypt$${otherSalt.toString('base64')}$${scryptSync(onlyAdminPassword, otherSalt, 64).toString('base64')}`
+                }
+                return signingKey
+            },
+        }
+        const isolatedLogin = createAdminLoginHandler({
+            config: adminConfig,
+            parameters: isolatedParameters,
+            now: () => 1_800_000_000_000,
+        })
+
+        await expect(isolatedLogin(event({ password }))).resolves.toMatchObject(
+            { statusCode: 401 },
+        )
+        await expect(
+            isolatedLogin(event({ password: onlyAdminPassword })),
+        ).resolves.toMatchObject({ statusCode: 200 })
+    })
+
+    it('admin logoutは管理Cookieを期限切れにする', async () => {
+        const response = await adminLogoutHandler(
+            event(undefined),
+            {} as never,
+            () => {},
+        )
+        if (typeof response === 'string' || response === undefined) {
+            throw new Error('Unexpected Lambda response')
+        }
+        expect(response.cookies?.[0]).toContain(`${ADMIN_COOKIE_NAME}=`)
+        expect(response.cookies?.[0]).toContain('Max-Age=0')
     })
 })

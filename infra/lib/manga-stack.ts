@@ -18,6 +18,9 @@ export interface MangaStackProps extends StackProps {
     readonly viewerPasswordParameterName?: string
     readonly cloudFrontPrivateKeyParameterName?: string
     readonly signedCookieTtlSeconds?: number
+    readonly adminPasswordParameterName?: string
+    readonly adminSigningKeyParameterName?: string
+    readonly adminSessionTtlSeconds?: number
 }
 
 export class MangaStack extends Stack {
@@ -40,6 +43,13 @@ export class MangaStack extends Stack {
                 '/manga/cloudfront-private-key',
             signedCookieTtlSeconds:
                 props.signedCookieTtlSeconds ?? 24 * 60 * 60,
+            adminPasswordParameterName:
+                props.adminPasswordParameterName ??
+                '/manga/admin-password-hash',
+            adminSigningKeyParameterName:
+                props.adminSigningKeyParameterName ??
+                '/manga/admin-signing-key',
+            adminSessionTtlSeconds: props.adminSessionTtlSeconds ?? 60 * 60,
         })
         const distribution = createDistribution(this, {
             frontendBucket,

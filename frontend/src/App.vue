@@ -10,7 +10,10 @@ import { useAuthStore } from '@/stores/auth'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const isLoginPage = computed(() => route.path === '/login')
+// 管理画面は独立したheaderを持つため、閲覧側のheaderとlogoutを重ねない。
+const isStandalonePage = computed(
+    () => route.path === '/login' || route.path.startsWith('/admin'),
+)
 const scrollbar = ref<ScrollbarInstance | null>(null)
 const { height, deviceType } = useWindowSizeAndDevice()
 const { showScrollButton, currentTop, isScrollable, onScroll, goToPageTop } =
@@ -61,7 +64,7 @@ watch(
         :style="{ height: `${height}px` }"
         :data-device="deviceType"
     >
-        <header v-if="!isLoginPage" class="AppHeader">
+        <header v-if="!isStandalonePage" class="AppHeader">
             <router-link
                 class="AppHeader__home"
                 to="/"
@@ -83,7 +86,7 @@ watch(
         </div>
 
         <PageTopButton
-            v-if="!isLoginPage"
+            v-if="!isStandalonePage"
             :visible="showScrollButton"
             @click="goToPageTop"
         />

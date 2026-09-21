@@ -18,6 +18,9 @@ export interface MangaApiProps {
     readonly viewerPasswordParameterName: string
     readonly cloudFrontPrivateKeyParameterName: string
     readonly signedCookieTtlSeconds: number
+    readonly adminPasswordParameterName: string
+    readonly adminSigningKeyParameterName: string
+    readonly adminSessionTtlSeconds: number
 }
 
 export interface MangaApiResources {
@@ -104,6 +107,53 @@ export function createMangaApi(
         path.join(backendRoot, 'functions/logout.ts'),
     )
 
+    const adminLoginFunction = createFunction(
+        scope,
+        'AdminLoginFunction',
+        path.join(backendRoot, 'functions/admin-login.ts'),
+        {
+            ADMIN_PASSWORD_PARAMETER_NAME: props.adminPasswordParameterName,
+            ADMIN_SIGNING_KEY_PARAMETER_NAME:
+                props.adminSigningKeyParameterName,
+            ADMIN_SESSION_TTL_SECONDS: String(props.adminSessionTtlSeconds),
+        },
+    )
+    // 管理Loginも、自分が使うpassword導出値とCookie署名鍵だけを取得できる。
+    adminLoginFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['ssm:GetParameter'],
+            resources: [
+                parameterArn(scope, props.adminPasswordParameterName),
+                parameterArn(scope, props.adminSigningKeyParameterName),
+            ],
+        }),
+    )
+    const adminLogoutFunction = createFunction(
+        scope,
+        'AdminLogoutFunction',
+        path.join(backendRoot, 'functions/admin-logout.ts'),
+    )
+    const adminSessionFunction = createFunction(
+        scope,
+        'AdminSessionFunction',
+        path.join(backendRoot, 'functions/admin-session.ts'),
+        {
+            // 共通config loaderを使うため名前は両方渡すが、このLambdaが読む値は署名鍵だけ。
+            ADMIN_PASSWORD_PARAMETER_NAME: props.adminPasswordParameterName,
+            ADMIN_SIGNING_KEY_PARAMETER_NAME:
+                props.adminSigningKeyParameterName,
+            ADMIN_SESSION_TTL_SECONDS: String(props.adminSessionTtlSeconds),
+        },
+    )
+    adminSessionFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['ssm:GetParameter'],
+            resources: [
+                parameterArn(scope, props.adminSigningKeyParameterName),
+            ],
+        }),
+    )
+
     // 高機能で単価も高いREST APIではなく、仕様どおりHTTP APIを使用する。
     const httpApi = new apigatewayv2.HttpApi(scope, 'MangaHttpApi', {
         apiName: 'private-manga-api',
@@ -118,6 +168,39 @@ export function createMangaApi(
             loginFunction,
         ),
     })
+    httpApi.addRoutes({
+        path: '/api/admin/login',
+        methods: [apigatewayv2.HttpMethod.POST],
+        integration: new HttpLambdaIntegration(
+            'AdminLoginIntegration',
+            adminLoginFunction,
+        ),
+    })
+    httpApi.addRoutes({
+        path: '/api/admin/logout',
+        methods: [apigatewayv2.HttpMethod.POST],
+        integration: new HttpLambdaIntegration(
+            'AdminLogoutIntegration',
+            adminLogoutFunction,
+        ),
+    })
+    httpApi.addRoutes({
+        path: '/api/admin/session',
+        methods: [apigatewayv2.HttpMethod.GET],
+        integration: new HttpLambdaIntegration(
+            'AdminSessionIntegration',
+            adminSessionFunction,
+        ),
+    })
+
+    // DBなしの簡易認証なので、API全体へ小さなthrottleを設けて連続試行を抑える。
+    // 数人だけのサイトでは5 req/s、burst 10で通常操作を妨げない。
+    const defaultStage = httpApi.defaultStage?.node
+        .defaultChild as apigatewayv2.CfnStage
+    defaultStage.defaultRouteSettings = {
+        throttlingBurstLimit: 10,
+        throttlingRateLimit: 5,
+    }
     httpApi.addRoutes({
         path: '/api/logout',
         methods: [apigatewayv2.HttpMethod.POST],

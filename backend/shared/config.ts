@@ -7,6 +7,7 @@ export const SIGNED_COOKIE_NAMES = [
 ] as const
 
 export const DEFAULT_SIGNED_COOKIE_TTL_SECONDS = 24 * 60 * 60
+export const DEFAULT_ADMIN_SESSION_TTL_SECONDS = 60 * 60
 // Login APIが受け取るのは短いpasswordだけなので、巨大なJSONを早い段階で拒否する。
 export const MAX_REQUEST_BODY_BYTES = 4096
 
@@ -15,6 +16,12 @@ export interface RuntimeConfig {
     readonly cloudFrontPrivateKeyParameterName: string
     readonly cloudFrontKeyPairId: string
     readonly signedCookieTtlSeconds: number
+}
+
+export interface AdminRuntimeConfig {
+    readonly adminPasswordParameterName: string
+    readonly adminSigningKeyParameterName: string
+    readonly adminSessionTtlSeconds: number
 }
 
 function requiredEnvironment(name: string): string {
@@ -45,5 +52,25 @@ export function loadRuntimeConfig(): RuntimeConfig {
         ),
         cloudFrontKeyPairId: requiredEnvironment('CLOUDFRONT_KEY_PAIR_ID'),
         signedCookieTtlSeconds: configuredTtl,
+    }
+}
+
+export function loadAdminRuntimeConfig(): AdminRuntimeConfig {
+    const configuredTtl = Number(
+        process.env.ADMIN_SESSION_TTL_SECONDS ??
+            DEFAULT_ADMIN_SESSION_TTL_SECONDS,
+    )
+    if (!Number.isSafeInteger(configuredTtl) || configuredTtl <= 0) {
+        throw new Error('ADMIN_SESSION_TTL_SECONDS must be a positive integer')
+    }
+
+    return {
+        adminPasswordParameterName: requiredEnvironment(
+            'ADMIN_PASSWORD_PARAMETER_NAME',
+        ),
+        adminSigningKeyParameterName: requiredEnvironment(
+            'ADMIN_SIGNING_KEY_PARAMETER_NAME',
+        ),
+        adminSessionTtlSeconds: configuredTtl,
     }
 }
