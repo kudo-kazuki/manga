@@ -45,6 +45,7 @@ function createFunction(
     id: string,
     entry: string,
     environment: Record<string, string> = {},
+    timeoutSeconds = 5,
 ): lambdaNodejs.NodejsFunction {
     // CDK既定の無期限ログを避け、小規模サイトに十分な1週間だけ保持する。
     const logGroup = new logs.LogGroup(scope, `${id}LogGroup`, {
@@ -59,7 +60,7 @@ function createFunction(
         entry,
         handler: 'handler',
         memorySize: 128,
-        timeout: Duration.seconds(5),
+        timeout: Duration.seconds(timeoutSeconds),
         logGroup,
         environment,
         bundling: {
@@ -177,6 +178,48 @@ export function createMangaApi(
     )
     // Lambdaが署名できるPUT先もmanga/ prefixだけに限定する。
     props.mangaBucket.grantPut(presignFunction, 'manga/*')
+    const completeUploadFunction = createFunction(
+        scope,
+        'CompleteUploadFunction',
+        path.join(backendRoot, 'functions/complete-upload.ts'),
+        {
+            MANGA_BUCKET_NAME: props.mangaBucket.bucketName,
+            ADMIN_SIGNING_KEY_PARAMETER_NAME:
+                props.adminSigningKeyParameterName,
+        },
+        // 最大10万件のKeyをpagination付きで確認するため、認証Lambdaより余裕を持たせる。
+        30,
+    )
+    completeUploadFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['ssm:GetParameter'],
+            resources: [
+                parameterArn(scope, props.adminSigningKeyParameterName),
+            ],
+        }),
+    )
+    completeUploadFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['s3:ListBucket'],
+            resources: [props.mangaBucket.bucketArn],
+            conditions: { StringLike: { 's3:prefix': ['manga/*'] } },
+        }),
+    )
+    completeUploadFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['s3:GetObject'],
+            resources: [props.mangaBucket.arnForObjects('manga/index.json')],
+        }),
+    )
+    completeUploadFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['s3:PutObject'],
+            resources: [
+                props.mangaBucket.arnForObjects('manga/index.json'),
+                props.mangaBucket.arnForObjects('manga/*/metadata.json'),
+            ],
+        }),
+    )
 
     // 高機能で単価も高いREST APIではなく、仕様どおりHTTP APIを使用する。
     const httpApi = new apigatewayv2.HttpApi(scope, 'MangaHttpApi', {
@@ -222,6 +265,14 @@ export function createMangaApi(
         integration: new HttpLambdaIntegration(
             'PresignIntegration',
             presignFunction,
+        ),
+    })
+    httpApi.addRoutes({
+        path: '/api/upload/complete',
+        methods: [apigatewayv2.HttpMethod.POST],
+        integration: new HttpLambdaIntegration(
+            'CompleteUploadIntegration',
+            completeUploadFunction,
         ),
     })
 

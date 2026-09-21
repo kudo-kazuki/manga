@@ -103,17 +103,32 @@ describe('MangaStack', () => {
             DistributionConfig: {
                 CacheBehaviors: Match.arrayWith([
                     Match.objectLike({
+                        PathPattern: 'manga/index.json',
+                        TrustedKeyGroups: Match.anyValue(),
+                    }),
+                    Match.objectLike({
+                        PathPattern: 'manga/*/metadata.json',
+                        TrustedKeyGroups: Match.anyValue(),
+                    }),
+                    Match.objectLike({
                         PathPattern: 'manga/*',
                         TrustedKeyGroups: Match.anyValue(),
                     }),
                 ]),
             },
         })
+        template.hasResourceProperties('AWS::CloudFront::CachePolicy', {
+            CachePolicyConfig: {
+                DefaultTTL: 60,
+                MaxTTL: 60,
+                MinTTL: 0,
+            },
+        })
     })
 
     it('HTTP APIとcache無効の/api/* Behaviorを作成する', () => {
         template.resourceCountIs('AWS::ApiGatewayV2::Api', 1)
-        template.resourceCountIs('AWS::ApiGatewayV2::Route', 6)
+        template.resourceCountIs('AWS::ApiGatewayV2::Route', 7)
         template.hasResourceProperties('AWS::ApiGatewayV2::Stage', {
             DefaultRouteSettings: {
                 ThrottlingBurstLimit: 10,
@@ -156,6 +171,15 @@ describe('MangaStack', () => {
                 (definition) =>
                     definition.includes('s3:PutObject') &&
                     definition.includes('manga/*'),
+            ),
+        ).toBe(true)
+        expect(
+            policyDefinitions.some(
+                (definition) =>
+                    definition.includes('s3:ListBucket') &&
+                    definition.includes('manga/*') &&
+                    definition.includes('manga/index.json') &&
+                    definition.includes('manga/*/metadata.json'),
             ),
         ).toBe(true)
     })

@@ -10,6 +10,7 @@ import type { ParsedWork, RelativeImageFile } from '@/upload/types'
 import { convertImageToWebp } from '@/upload/webp'
 import {
     AdminAuthenticationError,
+    completeUploadedWork,
     putPresignedObject,
     requestPresignedFiles,
 } from '@/upload/uploadApi'
@@ -26,6 +27,7 @@ const uploadManager = shallowRef<UploadManager | null>(null)
 const uploadSnapshot = ref<UploadSnapshot | null>(null)
 const isUploadRunning = ref(false)
 const isPaused = ref(false)
+const isPublished = ref(false)
 
 const progressPercent = computed(() => {
     const snapshot = uploadSnapshot.value
@@ -89,6 +91,7 @@ const parseFiles = async (
     work.value = null
     uploadManager.value = null
     uploadSnapshot.value = null
+    isPublished.value = false
     try {
         // この段階ではFile参照とpathだけを整理し、画像decodeは開始しない。
         work.value = parseWorkFiles(await files)
@@ -127,6 +130,13 @@ const handleUploadError = async (error: unknown) => {
         error instanceof Error ? error.message : 'Uploadに失敗しました。'
 }
 
+const finalizeUpload = async () => {
+    if (!work.value) return
+    // Clientの成功数だけで公開せず、BackendにS3 objectを再確認させてからmetadataを確定する。
+    await completeUploadedWork(work.value)
+    isPublished.value = true
+}
+
 const startUpload = async () => {
     if (!work.value || isUploadRunning.value) return
     errorMessage.value = ''
@@ -146,6 +156,10 @@ const startUpload = async () => {
     uploadManager.value = manager
     try {
         await manager.run()
+        const snapshot = manager.snapshot()
+        if (snapshot.uploaded === snapshot.total && snapshot.failed === 0) {
+            await finalizeUpload()
+        }
     } catch (error) {
         await handleUploadError(error)
     } finally {
@@ -168,6 +182,24 @@ const retryFailed = async () => {
     isUploadRunning.value = true
     try {
         await uploadManager.value.retryFailed()
+        const snapshot = uploadManager.value.snapshot()
+        if (snapshot.uploaded === snapshot.total && snapshot.failed === 0) {
+            await finalizeUpload()
+        }
+    } catch (error) {
+        await handleUploadError(error)
+    } finally {
+        isUploadRunning.value = false
+    }
+}
+
+const retryFinalize = async () => {
+    if (isUploadRunning.value || isPublished.value) return
+    errorMessage.value = ''
+    isUploadRunning.value = true
+    try {
+        // complete APIは同じrequestを安全に再送でき、画像の再Uploadは不要。
+        await finalizeUpload()
     } catch (error) {
         await handleUploadError(error)
     } finally {
@@ -316,11 +348,23 @@ const retryFailed = async () => {
             >
                 WebP変換・Upload開始
             </button>
-            <p
-                v-if="uploadSnapshot?.uploaded === uploadSnapshot?.total"
-                class="AdminPage__notice"
+            <button
+                v-if="
+                    uploadSnapshot?.uploaded === uploadSnapshot?.total &&
+                    !isPublished &&
+                    !isUploadRunning
+                "
+                class="AdminPage__start"
+                type="button"
+                @click="retryFinalize"
             >
-                全画像のUploadが完了しました。metadata確定は次Phaseで接続します。
+                metadata確定を再試行
+            </button>
+            <p v-if="isPublished" class="AdminPage__notice">
+                全画像のUploadとmetadataの公開が完了しました。
+                <router-link :to="`/works/${encodeURIComponent(work.id)}`">
+                    作品ページを開く
+                </router-link>
             </p>
         </section>
     </main>

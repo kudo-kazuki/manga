@@ -89,6 +89,30 @@ function handler(event) {
                 cloudfront.OriginRequestQueryStringBehavior.all(),
         },
     )
+    const mangaImageCachePolicy = new cloudfront.CachePolicy(
+        scope,
+        'MangaImageCachePolicy',
+        {
+            // 画像は同じKeyで更新しない前提なので、Browser/S3の長期cacheと整合させる。
+            minTtl: Duration.seconds(0),
+            defaultTtl: Duration.hours(1),
+            maxTtl: Duration.days(365),
+            enableAcceptEncodingBrotli: true,
+            enableAcceptEncodingGzip: true,
+        },
+    )
+    const mangaMetadataCachePolicy = new cloudfront.CachePolicy(
+        scope,
+        'MangaMetadataCachePolicy',
+        {
+            // index/metadata更新後に長時間古い一覧を返さないよう、画像とはpolicyを分ける。
+            minTtl: Duration.seconds(0),
+            defaultTtl: Duration.minutes(1),
+            maxTtl: Duration.minutes(1),
+            enableAcceptEncodingBrotli: true,
+            enableAcceptEncodingGzip: true,
+        },
+    )
 
     return new cloudfront.Distribution(scope, 'Distribution', {
         comment: 'Private manga viewer',
@@ -132,24 +156,38 @@ function handler(event) {
                     },
                 ],
             },
+            'manga/index.json': {
+                origin: mangaOrigin,
+                allowedMethods:
+                    cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+                cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
+                cachePolicy: mangaMetadataCachePolicy,
+                compress: true,
+                responseHeadersPolicy:
+                    cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
+                viewerProtocolPolicy:
+                    cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                trustedKeyGroups: [props.mangaKeyGroup],
+            },
+            'manga/*/metadata.json': {
+                origin: mangaOrigin,
+                allowedMethods:
+                    cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+                cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
+                cachePolicy: mangaMetadataCachePolicy,
+                compress: true,
+                responseHeadersPolicy:
+                    cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
+                viewerProtocolPolicy:
+                    cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                trustedKeyGroups: [props.mangaKeyGroup],
+            },
             'manga/*': {
                 origin: mangaOrigin,
                 allowedMethods:
                     cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
                 cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
-                cachePolicy: new cloudfront.CachePolicy(
-                    scope,
-                    'MangaCachePolicy',
-                    {
-                        // 画像は原則不変なので長期キャッシュを許可する。
-                        // metadata/index用の短期キャッシュBehaviorはPhase 5で追加する。
-                        minTtl: Duration.seconds(0),
-                        defaultTtl: Duration.hours(1),
-                        maxTtl: Duration.days(365),
-                        enableAcceptEncodingBrotli: true,
-                        enableAcceptEncodingGzip: true,
-                    },
-                ),
+                cachePolicy: mangaImageCachePolicy,
                 compress: true,
                 responseHeadersPolicy:
                     cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
