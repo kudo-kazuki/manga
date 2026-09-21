@@ -10,8 +10,17 @@ import { Construct } from 'constructs'
 import { createDistribution } from './distribution'
 import { createStorage } from './storage'
 
+export interface MangaStackProps extends StackProps {
+    /** テスト時だけ小さなasset directoryへ差し替えられる。通常はfrontend/distを使用する。 */
+    readonly frontendAssetPath?: string
+}
+
 export class MangaStack extends Stack {
-    public constructor(scope: Construct, id: string, props: StackProps = {}) {
+    public constructor(
+        scope: Construct,
+        id: string,
+        props: MangaStackProps = {},
+    ) {
         super(scope, id, props)
 
         const { frontendBucket, mangaBucket } = createStorage(this)
@@ -29,7 +38,8 @@ export class MangaStack extends Stack {
             prune: true,
             sources: [
                 s3deploy.Source.asset(
-                    path.resolve(__dirname, '../../frontend/dist'),
+                    props.frontendAssetPath ??
+                        path.resolve(__dirname, '../../frontend/dist'),
                 ),
             ],
         })

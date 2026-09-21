@@ -14,6 +14,8 @@
 
 ## CDK / ビルド
 
+- InfraとFrontendのテストランナーはVitestへ統一している。Node.js標準の `node:test` や別のテストランナーを混在させない。
+- Vitest 5は初回起動時にAPI保護用トークンを `node_modules/.vitest/.vitest-secret-token` へ作る。Infra側で作成権限エラーになった場合は、初回の `npm run test` だけ権限付きで実行する。トークンは `node_modules` 配下なのでGitには含めない。
 - `infra` の `BucketDeployment` は `frontend/dist` をassetにするため、synthより前にFrontend buildが必要。通常は `infra/package.json` の `npm run synth`を使えば先にbuildされる。
 - AWSへ接続しない確認には `cdk synth`を使う。`cdk diff`はデプロイ済みStackとの比較でAWS認証を必要とする場合がある。
 - ユーザーから明示的な依頼がない限り、`cdk deploy`、`cdk bootstrap`、AWSリソースを変更するコマンドを実行しない。

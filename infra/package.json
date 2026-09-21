@@ -5,7 +5,8 @@
     "scripts": {
         "build:frontend": "npm --prefix ../frontend run build",
         "typecheck": "tsc --noEmit",
-        "test": "node --import tsx --test test/manga-stack.test.ts",
+        "test": "vitest run",
+        "test:watch": "vitest",
         "synth": "npm run build:frontend && cdk synth",
         "diff": "npm run build:frontend && cdk diff",
         "deploy": "npm run build:frontend && cdk deploy"
@@ -18,6 +19,7 @@
         "@types/node": "^26.6.2",
         "aws-cdk": "^2.1142.0",
         "tsx": "^4.23.15",
-        "typescript": "^7.0.2"
+        "typescript": "^7.0.2",
+        "vitest": "^5.0.1"
     }
 }
