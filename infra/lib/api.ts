@@ -9,6 +9,7 @@ import {
     aws_lambda as lambda,
     aws_lambda_nodejs as lambdaNodejs,
     aws_logs as logs,
+    aws_s3 as s3,
 } from 'aws-cdk-lib'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { Construct } from 'constructs'
@@ -21,6 +22,8 @@ export interface MangaApiProps {
     readonly adminPasswordParameterName: string
     readonly adminSigningKeyParameterName: string
     readonly adminSessionTtlSeconds: number
+    readonly mangaBucket: s3.IBucket
+    readonly presignedUrlTtlSeconds: number
 }
 
 export interface MangaApiResources {
@@ -153,6 +156,27 @@ export function createMangaApi(
             ],
         }),
     )
+    const presignFunction = createFunction(
+        scope,
+        'PresignFunction',
+        path.join(backendRoot, 'functions/presign.ts'),
+        {
+            MANGA_BUCKET_NAME: props.mangaBucket.bucketName,
+            ADMIN_SIGNING_KEY_PARAMETER_NAME:
+                props.adminSigningKeyParameterName,
+            PRESIGNED_URL_TTL_SECONDS: String(props.presignedUrlTtlSeconds),
+        },
+    )
+    presignFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['ssm:GetParameter'],
+            resources: [
+                parameterArn(scope, props.adminSigningKeyParameterName),
+            ],
+        }),
+    )
+    // Lambdaが署名できるPUT先もmanga/ prefixだけに限定する。
+    props.mangaBucket.grantPut(presignFunction, 'manga/*')
 
     // 高機能で単価も高いREST APIではなく、仕様どおりHTTP APIを使用する。
     const httpApi = new apigatewayv2.HttpApi(scope, 'MangaHttpApi', {
@@ -190,6 +214,14 @@ export function createMangaApi(
         integration: new HttpLambdaIntegration(
             'AdminSessionIntegration',
             adminSessionFunction,
+        ),
+    })
+    httpApi.addRoutes({
+        path: '/api/upload/presign',
+        methods: [apigatewayv2.HttpMethod.POST],
+        integration: new HttpLambdaIntegration(
+            'PresignIntegration',
+            presignFunction,
         ),
     })
 

@@ -26,7 +26,8 @@ export interface ParsedWork {
     readonly warnings: readonly string[]
 }
 
-export type ConversionStatus = 'pending' | 'converting' | 'succeeded' | 'failed'
+export type ConversionStatus =
+    'pending' | 'converting' | 'uploading' | 'succeeded' | 'failed'
 
 export interface ConversionItem {
     readonly page: ParsedPage

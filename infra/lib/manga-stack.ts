@@ -1,5 +1,6 @@
 import * as path from 'node:path'
 import {
+    CfnParameter,
     CfnOutput,
     Stack,
     StackProps,
@@ -31,7 +32,22 @@ export class MangaStack extends Stack {
     ) {
         super(scope, id, props)
 
-        const { frontendBucket, mangaBucket } = createStorage(this)
+        // CloudFront標準domainはDistribution作成後に決まるため、初回はlocalhostでdeployし、
+        // OutputされたSiteUrlを指定して再deployできる明示的な2段階方式にする。
+        const uploadAllowedOrigin = new CfnParameter(
+            this,
+            'UploadAllowedOrigin',
+            {
+                type: 'String',
+                default: 'http://localhost:4646',
+                description:
+                    'Exact browser origin allowed to upload directly to S3; never use *',
+            },
+        )
+        const { frontendBucket, mangaBucket } = createStorage(
+            this,
+            uploadAllowedOrigin.valueAsString,
+        )
         const { publicKey, keyGroup } = createViewerAuth(this)
         const { httpApi } = createMangaApi(this, {
             cloudFrontKeyPairId: publicKey.publicKeyId,
@@ -50,6 +66,8 @@ export class MangaStack extends Stack {
                 props.adminSigningKeyParameterName ??
                 '/manga/admin-signing-key',
             adminSessionTtlSeconds: props.adminSessionTtlSeconds ?? 60 * 60,
+            mangaBucket,
+            presignedUrlTtlSeconds: 15 * 60,
         })
         const distribution = createDistribution(this, {
             frontendBucket,

@@ -6,7 +6,10 @@ export interface MangaStorageResources {
     readonly mangaBucket: s3.Bucket
 }
 
-export function createStorage(scope: Construct): MangaStorageResources {
+export function createStorage(
+    scope: Construct,
+    uploadAllowedOrigin: string,
+): MangaStorageResources {
     // SPA用・漫画用のどちらもS3単体では公開せず、CloudFrontのOAC経由だけで配信する。
     // バケット名は自動生成にして、環境ごとの名前衝突を避ける。
     const commonBucketProps = {
@@ -38,6 +41,16 @@ export function createStorage(scope: Construct): MangaStorageResources {
         // 漫画画像は再生成できないデータなので、cdk destroyやStack置換でも絶対に連動削除しない。
         autoDeleteObjects: false,
         removalPolicy: RemovalPolicy.RETAIN,
+        // Presigned PUTだけはBrowserからS3へ直接送るため、PUTとContent-Typeだけを許可する。
+        // OriginはCloudFormation Parameterで明示し、'*'は使用しない。
+        cors: [
+            {
+                allowedOrigins: [uploadAllowedOrigin],
+                allowedMethods: [s3.HttpMethods.PUT],
+                allowedHeaders: ['content-type', 'cache-control'],
+                maxAge: 900,
+            },
+        ],
     })
 
     return { frontendBucket, mangaBucket }

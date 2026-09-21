@@ -1,4 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import type { APIGatewayProxyEventV2 } from 'aws-lambda'
+import { createPresignHandler } from '../functions/presign.js'
+import {
+    ADMIN_COOKIE_NAME,
+    createAdminSessionCookie,
+    readCookie,
+} from '../shared/admin-session.js'
+import type { ParameterReader } from '../shared/parameters.js'
 import { RequestValidationError } from '../shared/validation.js'
 import {
     buildMangaImageKey,
@@ -92,5 +100,95 @@ describe('Presign request validation', () => {
                 }),
             ),
         ).toThrow(RequestValidationError)
+    })
+})
+
+describe('Presign handler', () => {
+    const signingKey = 'admin-signing-key-with-enough-randomness'
+    const signingKeyParameterName = '/manga/admin-signing-key'
+    const parameters: ParameterReader = {
+        async getSecureString(name) {
+            if (name !== signingKeyParameterName) throw new Error('unexpected')
+            return signingKey
+        },
+    }
+    const signedInputs: Array<{
+        key: string
+        contentType: string
+        expiresInSeconds: number
+    }> = []
+    const handler = createPresignHandler({
+        bucketName: 'private-manga-bucket',
+        adminSigningKeyParameterName: signingKeyParameterName,
+        expiresInSeconds: 900,
+        parameters,
+        signer: {
+            async createPutUrl(input) {
+                signedInputs.push({
+                    key: input.key,
+                    contentType: input.contentType,
+                    expiresInSeconds: input.expiresInSeconds,
+                })
+                return `https://upload.example/${input.key}`
+            },
+        },
+        now: () => 1_800_000_000_000,
+    })
+
+    function event(withCookie: boolean): APIGatewayProxyEventV2 {
+        const responseCookie = createAdminSessionCookie(
+            signingKey,
+            1_800_001_000,
+        )
+        const cookieValue = readCookie([responseCookie], ADMIN_COOKIE_NAME)
+        return {
+            version: '2.0',
+            routeKey: 'POST /api/upload/presign',
+            rawPath: '/api/upload/presign',
+            rawQueryString: '',
+            headers: { 'content-type': 'application/json' },
+            requestContext: {} as APIGatewayProxyEventV2['requestContext'],
+            isBase64Encoded: false,
+            body: request(),
+            ...(withCookie && cookieValue
+                ? { cookies: [`${ADMIN_COOKIE_NAME}=${cookieValue}`] }
+                : {}),
+        }
+    }
+
+    it('未認証requestを拒否してURLを発行しない', async () => {
+        signedInputs.length = 0
+        const response = await handler(event(false))
+        expect(response.statusCode).toBe(401)
+        expect(signedInputs).toHaveLength(0)
+    })
+
+    it('認証済みrequestへmanga prefixのPUT URLを返す', async () => {
+        signedInputs.length = 0
+        const response = await handler(event(true))
+        expect(response.statusCode).toBe(200)
+        expect(signedInputs).toEqual([
+            {
+                key: 'manga/baburios-abc123/001/001.webp',
+                contentType: 'image/webp',
+                expiresInSeconds: 900,
+            },
+        ])
+        expect(response.body).toContain(
+            'https://upload.example/manga/baburios-abc123/001/001.webp',
+        )
+    })
+
+    it('改ざんされた管理Cookieを拒否する', async () => {
+        signedInputs.length = 0
+        const tamperedEvent = event(true)
+        tamperedEvent.cookies = tamperedEvent.cookies?.map(
+            (cookie) => `${cookie.slice(0, -1)}x`,
+        )
+
+        const response = await handler(tamperedEvent)
+
+        expect(response.statusCode).toBe(401)
+        expect(signedInputs).toHaveLength(0)
     })
 })

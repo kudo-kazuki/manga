@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useAdminAuthStore } from '@/stores/adminAuth'
 import {
     collectDroppedFiles,
@@ -7,6 +7,13 @@ import {
     parseWorkFiles,
 } from '@/upload/folderParser'
 import type { ParsedWork, RelativeImageFile } from '@/upload/types'
+import { convertImageToWebp } from '@/upload/webp'
+import {
+    AdminAuthenticationError,
+    putPresignedObject,
+    requestPresignedFiles,
+} from '@/upload/uploadApi'
+import { UploadManager, type UploadSnapshot } from '@/upload/uploadManager'
 
 const router = useRouter()
 const adminAuth = useAdminAuthStore()
@@ -15,6 +22,42 @@ const errorMessage = ref('')
 const isParsing = ref(false)
 const quality = ref(0.85)
 const isAuthorizing = ref(true)
+const uploadManager = shallowRef<UploadManager | null>(null)
+const uploadSnapshot = ref<UploadSnapshot | null>(null)
+const isUploadRunning = ref(false)
+const isPaused = ref(false)
+
+const progressPercent = computed(() => {
+    const snapshot = uploadSnapshot.value
+    if (!snapshot || snapshot.total === 0) return 0
+    return Math.round(
+        ((snapshot.uploaded + snapshot.failed) / snapshot.total) * 100,
+    )
+})
+
+const compressionPercent = computed(() => {
+    const snapshot = uploadSnapshot.value
+    if (!snapshot || snapshot.convertedOriginalBytes === 0) return 0
+    return Math.max(
+        0,
+        Math.round(
+            (1 - snapshot.convertedBytes / snapshot.convertedOriginalBytes) *
+                1000,
+        ) / 10,
+    )
+})
+
+const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    const units = ['KB', 'MB', 'GB', 'TB']
+    let value = bytes / 1024
+    let unitIndex = 0
+    while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024
+        unitIndex += 1
+    }
+    return `${value.toFixed(value >= 10 ? 1 : 2)} ${units[unitIndex]}`
+}
 
 onMounted(async () => {
     // Cookie本体はHttpOnlyのまま、署名済みsessionが有効かだけをBackendへ確認する。
@@ -44,6 +87,8 @@ const parseFiles = async (
     isParsing.value = true
     errorMessage.value = ''
     work.value = null
+    uploadManager.value = null
+    uploadSnapshot.value = null
     try {
         // この段階ではFile参照とpathだけを整理し、画像decodeは開始しない。
         work.value = parseWorkFiles(await files)
@@ -71,6 +116,63 @@ const onFolderSelected = async (event: Event) => {
 const logout = async () => {
     await adminAuth.logout()
     await router.replace('/admin/login')
+}
+
+const handleUploadError = async (error: unknown) => {
+    if (error instanceof AdminAuthenticationError) {
+        await router.replace('/admin/login')
+        return
+    }
+    errorMessage.value =
+        error instanceof Error ? error.message : 'Uploadに失敗しました。'
+}
+
+const startUpload = async () => {
+    if (!work.value || isUploadRunning.value) return
+    errorMessage.value = ''
+    isUploadRunning.value = true
+    isPaused.value = false
+    const manager = new UploadManager(work.value, {
+        concurrency: 5,
+        quality: quality.value,
+        requestPresign: requestPresignedFiles,
+        convert: convertImageToWebp,
+        upload: putPresignedObject,
+        onChange(snapshot) {
+            // class内部のmutable stateを直接templateへ渡さず、小さな集計値だけをreactiveにする。
+            uploadSnapshot.value = snapshot
+        },
+    })
+    uploadManager.value = manager
+    try {
+        await manager.run()
+    } catch (error) {
+        await handleUploadError(error)
+    } finally {
+        isUploadRunning.value = false
+    }
+}
+
+const pauseUpload = () => {
+    uploadManager.value?.pause()
+    isPaused.value = true
+}
+
+const resumeUpload = () => {
+    uploadManager.value?.resume()
+    isPaused.value = false
+}
+
+const retryFailed = async () => {
+    if (!uploadManager.value || isUploadRunning.value) return
+    isUploadRunning.value = true
+    try {
+        await uploadManager.value.retryFailed()
+    } catch (error) {
+        await handleUploadError(error)
+    } finally {
+        isUploadRunning.value = false
+    }
 }
 </script>
 
@@ -140,8 +242,54 @@ const logout = async () => {
                     min="0.5"
                     max="1"
                     step="0.05"
+                    :disabled="isUploadRunning || !!uploadSnapshot"
                 />
             </label>
+
+            <section v-if="uploadSnapshot" class="AdminPage__progress">
+                <div class="AdminPage__progressBar">
+                    <span :style="{ width: `${progressPercent}%` }"></span>
+                </div>
+                <strong>{{ progressPercent }}%</strong>
+                <p>
+                    Upload済み: {{ uploadSnapshot.uploaded }} /
+                    {{ uploadSnapshot.total }}　変換済み:
+                    {{ uploadSnapshot.converted }}　失敗:
+                    {{ uploadSnapshot.failed }}
+                </p>
+                <p>
+                    元容量: {{ formatBytes(work.totalBytes) }}　変換後:
+                    {{ formatBytes(uploadSnapshot.convertedBytes) }}　圧縮率:
+                    {{ compressionPercent }}%
+                </p>
+                <p v-if="uploadSnapshot.currentFiles.length">
+                    現在:
+                    {{ uploadSnapshot.currentFiles.slice(0, 3).join(', ') }}
+                </p>
+                <div class="AdminPage__controls">
+                    <button
+                        v-if="isUploadRunning && !isPaused"
+                        type="button"
+                        @click="pauseUpload"
+                    >
+                        Pause
+                    </button>
+                    <button
+                        v-if="isUploadRunning && isPaused"
+                        type="button"
+                        @click="resumeUpload"
+                    >
+                        Resume
+                    </button>
+                    <button
+                        v-if="!isUploadRunning && uploadSnapshot.failed > 0"
+                        type="button"
+                        @click="retryFailed"
+                    >
+                        Retry failed files
+                    </button>
+                </div>
+            </section>
 
             <ul v-if="work.warnings.length" class="AdminPage__warnings">
                 <li
@@ -160,8 +308,19 @@ const logout = async () => {
                 </div>
             </div>
 
-            <p class="AdminPage__notice">
-                WebP変換とS3アップロードの開始操作はPhase 4で接続します。
+            <button
+                v-if="!uploadSnapshot"
+                class="AdminPage__start"
+                type="button"
+                @click="startUpload"
+            >
+                WebP変換・Upload開始
+            </button>
+            <p
+                v-if="uploadSnapshot?.uploaded === uploadSnapshot?.total"
+                class="AdminPage__notice"
+            >
+                全画像のUploadが完了しました。metadata確定は次Phaseで接続します。
             </p>
         </section>
     </main>
@@ -200,7 +359,9 @@ const logout = async () => {
     }
 
     &__header button,
-    &__drop label {
+    &__drop label,
+    &__controls button,
+    &__start {
         padding: 8px 12px;
         border: 1px solid #d8d4cc;
         border-radius: 8px;
@@ -277,6 +438,40 @@ const logout = async () => {
     &__notice {
         color: #716d65;
         font-size: 13px;
+    }
+
+    &__progress {
+        display: grid;
+        gap: 8px;
+        padding: 16px;
+        border-radius: 10px;
+        background: #f5f3ee;
+    }
+
+    &__progressBar {
+        height: 12px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #ddd8cd;
+    }
+
+    &__progressBar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: #85734c;
+        transition: width 0.2s ease;
+    }
+
+    &__controls {
+        display: flex;
+        gap: 8px;
+    }
+
+    &__start {
+        justify-self: start;
+        background: #302e2a;
+        color: #fff;
     }
 
     @media (max-width: 700px) {

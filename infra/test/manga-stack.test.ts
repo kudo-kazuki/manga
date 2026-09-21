@@ -33,10 +33,11 @@ let synthesized: Record<string, unknown>
 let template: Template
 
 beforeAll(() => {
-    // CDKの初回synthはasset hash計算に時間がかかるため、全テストで1回だけ共有する。
+    // CDKの初回synthは複数Lambdaのbundleとasset hash計算に時間がかかるため、
+    // 全テストで1回だけ共有し、低速なCIでも途中終了しない余裕を持たせる。
     synthesized = synthesizeTemplate()
     template = Template.fromJSON(synthesized)
-}, 30_000)
+}, 60_000)
 
 describe('MangaStack', () => {
     it('非公開S3 BucketとOAC originを作成する', () => {
@@ -57,6 +58,18 @@ describe('MangaStack', () => {
                 BlockPublicPolicy: true,
                 IgnorePublicAcls: true,
                 RestrictPublicBuckets: true,
+            },
+        })
+        template.hasResourceProperties('AWS::S3::Bucket', {
+            CorsConfiguration: {
+                CorsRules: [
+                    {
+                        AllowedHeaders: ['content-type', 'cache-control'],
+                        AllowedMethods: ['PUT'],
+                        AllowedOrigins: [{ Ref: 'UploadAllowedOrigin' }],
+                        MaxAge: 900,
+                    },
+                ],
             },
         })
     })
@@ -100,7 +113,7 @@ describe('MangaStack', () => {
 
     it('HTTP APIとcache無効の/api/* Behaviorを作成する', () => {
         template.resourceCountIs('AWS::ApiGatewayV2::Api', 1)
-        template.resourceCountIs('AWS::ApiGatewayV2::Route', 5)
+        template.resourceCountIs('AWS::ApiGatewayV2::Route', 6)
         template.hasResourceProperties('AWS::ApiGatewayV2::Stage', {
             DefaultRouteSettings: {
                 ThrottlingBurstLimit: 10,
@@ -138,6 +151,13 @@ describe('MangaStack', () => {
             definition.includes('parameter/manga/admin-password-hash'),
         )
         expect(adminPolicy).toContain('parameter/manga/admin-signing-key')
+        expect(
+            policyDefinitions.some(
+                (definition) =>
+                    definition.includes('s3:PutObject') &&
+                    definition.includes('manga/*'),
+            ),
+        ).toBe(true)
     })
 
     it('仕様で禁止されたAWSサービスを作成しない', () => {
