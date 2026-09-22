@@ -5,12 +5,15 @@ import {
     MangaAuthenticationError,
     type MangaIndexEntry,
 } from '@/manga/api'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 
 const route = useRoute()
 const router = useRouter()
 const works = ref<readonly MangaIndexEntry[]>([])
 const isLoading = ref(true)
 const errorMessage = ref('')
+
+useDocumentTitle('作品一覧')
 
 const loadWorks = async () => {
     isLoading.value = true

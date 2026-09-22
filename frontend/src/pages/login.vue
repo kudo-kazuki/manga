@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 
 const router = useRouter()
 const route = useRoute()
@@ -10,6 +11,8 @@ const password = ref('')
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 const isShaking = ref(false)
+
+useDocumentTitle('ログイン')
 
 const shakeForm = async () => {
     isShaking.value = false

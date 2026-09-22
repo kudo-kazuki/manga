@@ -5,12 +5,14 @@ import {
     MangaAuthenticationError,
     type MangaMetadata,
 } from '@/manga/api'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 
 const route = useRoute()
 const router = useRouter()
 const metadata = ref<MangaMetadata | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref('')
+const { setDocumentTitle } = useDocumentTitle('作品を読み込み中')
 const workId =
     typeof route.params.workId === 'string' ? route.params.workId : ''
 
@@ -19,6 +21,7 @@ const loadWork = async () => {
     errorMessage.value = ''
     try {
         metadata.value = await loadMangaMetadata(workId)
+        setDocumentTitle(metadata.value.title)
     } catch (error) {
         if (error instanceof MangaAuthenticationError) {
             await router.replace({

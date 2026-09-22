@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useAdminAuthStore } from '@/stores/adminAuth'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import {
     collectDroppedFiles,
     collectSelectedFiles,
@@ -29,6 +30,8 @@ import {
 } from '@/upload/failurePresentation'
 
 const router = useRouter()
+
+useDocumentTitle('漫画アップロード')
 const adminAuth = useAdminAuthStore()
 const work = ref<ParsedWork | null>(null)
 const errorMessage = ref('')

@@ -6,9 +6,12 @@ import {
     type AdminWorkEntry,
 } from '@/admin/worksApi'
 import { useAdminAuthStore } from '@/stores/adminAuth'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import { AdminAuthenticationError } from '@/upload/uploadApi'
 
 const router = useRouter()
+
+useDocumentTitle('作品削除')
 const adminAuth = useAdminAuthStore()
 const works = ref<readonly AdminWorkEntry[]>([])
 const selectedWork = ref<AdminWorkEntry | null>(null)

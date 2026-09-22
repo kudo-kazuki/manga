@@ -391,3 +391,9 @@ Budget alertはresource自体に料金が発生する場合があるためCDKへ
 - `cdk flags`警告: synth失敗ではない。内容を確認せず大量のflagを追加しない。
 - 初回deploy後にUploadだけCORS失敗: `UploadAllowedOrigin=$siteUrl`を渡した2回目deployを確認する。
 - password/鍵を更新したのにすぐ反映されない: Lambda warm containerのSSM cacheを考慮する。
+
+## Graphify
+
+ファイルを更新したら以下のコマンドを実行する。
+graphify . --code-only
+graphify cluster-only D:\manga

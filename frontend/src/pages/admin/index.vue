@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useAdminAuthStore } from '@/stores/adminAuth'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 
 const router = useRouter()
 const adminAuth = useAdminAuthStore()
 const isAuthorizing = ref(true)
+
+useDocumentTitle('管理メニュー')
 const isLocalDeployConsoleVisible = computed(
     () =>
         import.meta.env.DEV &&

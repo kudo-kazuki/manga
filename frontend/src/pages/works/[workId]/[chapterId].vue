@@ -8,6 +8,7 @@ import {
     type ImageLoadFailure,
     type MangaMetadata,
 } from '@/manga/api'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +16,7 @@ const metadata = ref<MangaMetadata | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref('')
 const imageError = ref<'' | ImageLoadFailure>('')
+const { setDocumentTitle } = useDocumentTitle('漫画を読み込み中')
 let isDiagnosingImage = false
 let imageDiagnosisGeneration = 0
 
@@ -85,7 +87,11 @@ const loadChapter = async () => {
     imageDiagnosisGeneration += 1
     try {
         metadata.value = await loadMangaMetadata(workId.value)
-        if (!chapter.value) errorMessage.value = 'Chapterが見つかりません。'
+        if (!chapter.value) {
+            errorMessage.value = 'Chapterが見つかりません。'
+        } else {
+            setDocumentTitle(`${chapter.value.title} - ${metadata.value.title}`)
+        }
     } catch (error) {
         if (error instanceof MangaAuthenticationError) {
             await router.replace({

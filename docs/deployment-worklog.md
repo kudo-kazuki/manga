@@ -360,6 +360,11 @@
 
 - 管理画面のWebP quality初期値を0.85から0.70へ変更。必要に応じて管理者がupload前にsliderで変更できる。
 
+### 2026-09-23 — ページtitleの動的更新（未deploy）
+
+- SPA route遷移時に、一覧、閲覧login、管理menu・upload・delete・local deploy consoleのdocument titleを画面名に応じて更新する。
+- 作品詳細は`作品名 | 漫画`、chapter viewerは`chapter名 - 作品名 | 漫画`をmetadata取得後に設定する。
+
 ## 中断時の再開手順
 
 1. `git status --short` と本書の最後の実行ログを確認する。

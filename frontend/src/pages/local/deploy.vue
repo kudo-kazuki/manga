@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 
 type JobId = 'backend' | 'frontend'
 
@@ -24,6 +25,8 @@ interface Snapshot {
 }
 
 const RUNNER_URL = 'http://127.0.0.1:5175'
+
+useDocumentTitle('デプロイ実行コンソール')
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
 const jobs: readonly Job[] = [
     {
