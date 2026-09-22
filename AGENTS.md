@@ -13,6 +13,7 @@
 - `ts-node` は現在のTypeScriptとの組み合わせでCDK synth時に失敗したため、再導入しない。発生したエラーは `Cannot read properties of undefined (reading 'fileExists')`。
 - npm registryへの接続で `UNABLE_TO_VERIFY_LEAF_SIGNATURE` が出る環境では、`NODE_OPTIONS=--use-system-ca` を設定する。
 - npm cacheの既定ディレクトリへ書き込めない場合は、Git無視済みの `D:\manga\.npm-cache` を `--cache` で指定する。
+- PowerShellで日本語を含むファイルを読むときは、`Get-Content -Encoding utf8` のように文字コードを明示する。文字化けして見える内容を根拠にファイルを再作成・上書きせず、編集前に表示内容が正常であることを確認する。
 
 ## CDK / ビルド
 
@@ -24,6 +25,8 @@
 - CloudFront標準ドメインのデフォルト証明書を使う間は、Distributionへ `minimumProtocolVersion` を指定しても効果がなくCDK警告になる。独自ドメインと証明書を追加するPhaseまで指定しない。
 - 現在インストール済みのCDKではS3 OACに `S3BucketOrigin.withOriginAccessControl(...)` を使用している。古いOAI APIへ戻さない。
 - CDKが表示する「feature flags are not configured」はsynth失敗ではない。内容を確認せず大量のflagを追加しない。
+- 変更後の確認は、まず変更範囲に対応する最小のコマンドから実行し、必要に応じてbuildや統合的な確認へ広げる。
+- サンドボックス内のVite buildで `spawn EPERM` が起きた場合は、アプリのbuild失敗と断定せず、プロセス起動制限として同じbuildを権限付きで再実行して切り分ける。
 
 ## Phase 1の一時的な保護
 
