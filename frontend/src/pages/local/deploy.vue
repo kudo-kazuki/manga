@@ -146,7 +146,7 @@ onBeforeUnmount(() => eventSource.value?.close())
             </p>
             <p class="LocalDeploy__notice">
                 runnerを起動したPowerShellで<code
-                    >$env:AWS_PROFILE = 'kudo-admin'</code
+                    >$env:AWS_PROFILE = '&lt;your-aws-profile&gt;'</code
                 >を設定してください。
             </p>
 

@@ -8,8 +8,8 @@
 
 - Repository: `D:\manga`
 - 開始時HEAD: `97c0c02` (`ff`)
-- AWS profile: `kudo-admin`
-- AWS account: `702347290971`
+- AWS profile: `<AWS profile>`
+- AWS account: `<AWS account ID>`
 - Region: `ap-northeast-1`
 - Node.js: `v24.18.0`
 - AWS CLI: `2.31.13`
@@ -35,7 +35,7 @@
 
 ### 1. AWS事前確認
 
-- [x] `kudo-admin` のcaller identityを再確認
+- [x] 設定済みAWS profileのcaller identityを再確認
 - [x] 対象regionの既存 `MangaStack` を確認
 - [x] CDK bootstrap Stackを確認
 - [x] 必要なSSM Parameter 4件の存在だけを確認（値は表示しない）
@@ -97,7 +97,7 @@
 
 ### 2026-09-22 10:18 JST — AWS read-only事前確認
 
-- caller identity: account `702347290971`、IAM user `kudo-admin` で一致
+- caller identity: 設定済みAWS accountとIAM userで一致
 - `MangaStack`: 存在しない
 - `CDKToolkit`: 存在しない
 - `/manga/` SSM Parameter: 0件
@@ -119,7 +119,7 @@
 
 ### 2026-09-22 10:25 JST — CDK bootstrap
 
-- `aws://702347290971/ap-northeast-1` へ標準 `CDKToolkit` を作成。
+- `aws://<AWS account ID>/ap-northeast-1` へ標準 `CDKToolkit` を作成。
 - CDK command result: `Environment ... bootstrapped`。
 - 既存のapp Stackや漫画Bucketには触れていない。
 - AWS CLIでの再確認は端末CA問題で失敗したため、bootstrap command自身の成功応答を記録。CloudFormation操作は以後 `NODE_OPTIONS=--use-system-ca` を設定したCDKで行う。
@@ -171,7 +171,7 @@
 - 公開鍵parameterが改行を含む単一引数として渡ることを、値を表示せずlocal確認した。
 - 最初の直接起動はlocal `cdk.out` のlock file作成権限エラーでAWS接続前に停止。権限付きで同じcommandを再実行した。
 - `MangaStack` の初回deployが成功。CDK終了code 0、deployment time 252.5秒。
-- Stack ARN: `arn:aws:cloudformation:ap-northeast-1:702347290971:stack/MangaStack/191bf3e0-b62a-11f1-ab2c-0e08a3827279`
+- Stack ARN: `arn:aws:cloudformation:ap-northeast-1:<AWS account ID>:stack/MangaStack/<stack ID>`
 - `SiteUrl`: `https://d26x2l9tcghr7u.cloudfront.net`
 - `DistributionId`: `EN6UHWSB7J97W`
 - `ApiEndpoint`: `https://73inf7qze0.execute-api.ap-northeast-1.amazonaws.com`
@@ -284,7 +284,7 @@
 
 ### 2026-09-22 16:50 JST — 作品削除・30日sessionのdeploy完了
 
-- `kudo-admin`がaccount `702347290971`のIAM userであることを再確認した。
+- 設定済みAWS profileのcaller identityを再確認した。
 - `cdk synth`成功。`cdk diff`は新規AdminWorks Lambda/API/IAM、既存認証LambdaのTTL/code、Frontend assetだけの差分で、Manga Bucketや既存resourceの削除・置換は0件だった。
 - `MangaStack`を更新し、16:49 JSTに`UPDATE_COMPLETE`。Manga Bucketの更新eventはなく、名前・Distribution・outputsも不変。
 - `.password`はskill記載どおりprocess内でだけ読み、値・長さ・hashを出力せず、Chromiumは`finally`で終了した。
@@ -302,7 +302,7 @@
 - GatherModokiのlocal deploy consoleを参照し、`/local/deploy`と`frontend/scripts/local-deploy-runner.mjs`を追加した。
 - Browserから実行可能なjobは固定2件だけ。Backendは既存Lambdaのコード更新だけ、Frontendはbuild・Frontend Bucket upload・CloudFront invalidationだけに限定する。
 - CDK/CloudFormation、CloudFront設定、IAM、SSM、漫画Bucket、MangaStackのresource変更はrunnerから実行できない。
-- runnerは`127.0.0.1:5175`だけで待受け、接続元address、Host、Vite local originを検証する。AWS account `702347290971`以外はjobを停止する。
+- runnerは`127.0.0.1:5175`だけで待受け、接続元address、Host、Vite local originを検証する。設定済みAWS account以外はjobを停止する。
 - local UIとrunnerを起動する`npm run dev:deploy-console`、個別jobの`npm run deploy:backend`/`npm run deploy:frontend`を追加した。
 - Frontend typecheck、lint、38 tests、production buildが成功。runnerのhealth endpointと未定義job 404、既存Vite serverへ相乗りする起動を確認した。
 - Chromiumで`/local/deploy`を開き、local限定UI、runner接続、固定2ボタンを確認した。実deploy buttonは押していないため、本記録の変更は未deploy。
@@ -363,7 +363,7 @@
 ## 中断時の再開手順
 
 1. `git status --short` と本書の最後の実行ログを確認する。
-2. `$env:AWS_PROFILE = 'kudo-admin'` を設定する。
-3. `aws sts get-caller-identity` でaccount `702347290971` を確認する。
+2. `$env:AWS_PROFILE = '<your-aws-profile>'` を設定する。
+3. `aws sts get-caller-identity` で意図したAWS accountであることを確認する。
 4. 完了済み項目を再実行せず、最初の未完了チェックから再開する。
 5. deploy中断時はCloudFormationのStack eventを先に確認し、同じdeployを即座に重ねない。
