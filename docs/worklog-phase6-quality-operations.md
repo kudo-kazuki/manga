@@ -84,3 +84,33 @@ root `README.md` に次をまとめた。
 - shellの既定regionに左右されず、deploy先とSSM参照先が `ap-northeast-1` になることを確認
 
 AWS resourceを変更するcommandは実行していない。残作業は、利用者がSSM Parameterを登録した後のCDK deployと、READMEのdeploy後checklistに沿った実AWS E2E確認だけである。
+
+## 6. 全体コードレビュー対応
+
+追加作業日: 2026-09-22
+
+GPT-5.6 Terraによるリポジトリ全体レビューを行い、指摘をコードと仕様へ再照合したうえで次を修正した。
+
+- 1,000ページ以上のchapterでFrontendとComplete APIの画像名が一致しない問題
+- AWS構成で使用しない旧FTP系npm scriptと未使用dependency
+- Secret再生成時の無確認上書きと、途中失敗による新旧secret混在リスク
+- 共通password運用に対する長さ要件とthrottleの説明不足
+- planningのBackend／Frontend実装状況との不整合
+
+画像名は総page数に依存させず、`001.webp`〜`999.webp`、`1000.webp`以降という規則へ統一した。レビューの推奨案をそのまま採用せず、既存ViewerとBackendの規則、同一page番号のkey安定性を比較して決定した。
+
+修正後の最終確認結果は次のとおり。
+
+- Backend typecheck成功
+- Backend unit test 35件成功
+- Frontend type-check成功
+- Frontend unit test 33件成功
+- Frontend ESLint成功
+- Frontend production build成功
+- Infra typecheck成功
+- Infra unit test 5件成功
+- CDK synth成功
+- PowerShell script構文確認成功
+- `git diff --check` 成功
+
+AWSへのdeploy、bootstrap、SSM更新は実行していない。

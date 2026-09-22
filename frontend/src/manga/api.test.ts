@@ -55,6 +55,9 @@ describe('Manga data API', () => {
         expect(createPageImageUrl('work-test', '003', 2)).toBe(
             '/manga/work-test/003/002.webp',
         )
+        expect(createPageImageUrl('work-test', '003', 1_000)).toBe(
+            '/manga/work-test/003/1000.webp',
+        )
     })
 
     it.each([

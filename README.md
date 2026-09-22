@@ -85,11 +85,17 @@ cd D:\manga\infra
 
 ## 認証情報の生成
 
-閲覧用passwordと管理用passwordは必ず別にします。次のscriptはpasswordを非表示で入力し、平文をfileやcommand line引数へ保存せず、Backendが読むscrypt形式へ変換します。同時に管理Cookie署名鍵とCloudFront RSA鍵も生成します。
+閲覧用passwordと管理用passwordは必ず別にし、password managerで生成した20文字以上のランダムな値を推奨します。scriptは最低16文字を要求し、passwordを非表示で入力して、平文をfileやcommand line引数へ保存せずBackendが読むscrypt形式へ変換します。同時に管理Cookie署名鍵とCloudFront RSA鍵も生成します。
 
 ```powershell
 cd D:\manga
 & .\scripts\prepare-secrets.ps1
+```
+
+既存のsecret fileが1つでもある場合、誤った鍵rotationを防ぐためscriptは停止します。全5件を意図的に再生成するときだけ `-Force` を指定してください。再生成後はCloudFront公開鍵と4個のSSM Parameterを同じ作業で更新する必要があり、既存の閲覧Cookieと管理sessionは無効になります。
+
+```powershell
+& .\scripts\prepare-secrets.ps1 -Force
 ```
 
 生成先はGit無視済みの`D:\manga\secrets`です。
@@ -244,6 +250,8 @@ cd D:\manga\infra
 - WAF、NAT Gateway、VPC、Cognito、DB、Secrets Managerは追加していない。
 
 認証は少人数サイト向けの共通passwordです。利用者別失効、監査、MFAが必要になった場合はCognito等を別途検討してください。
+
+API GatewayのthrottleはAPI全体の過負荷を抑えるもので、送信元別のログイン試行制限ではありません。長くランダムなpasswordを使用し、401・429の急増をCloudWatchで確認してください。送信元別のrate limitが必要になった場合は、追加料金を確認したうえでAWS WAFのrate-based ruleなどを検討します。
 
 ## Cost
 

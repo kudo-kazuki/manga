@@ -37,9 +37,10 @@ type ItemWithEntry = {
     webkitGetAsEntry?: () => LegacyEntry | null
 }
 
-function padId(index: number, count: number): string {
-    // 最低3桁にしつつ、1000件以上でも桁が欠けないよう総数に合わせる。
-    return String(index + 1).padStart(Math.max(3, String(count).length), '0')
+function padId(index: number): string {
+    // 総数に依存させず、1～999は3桁、1000以降はそのまま4桁以上にする。
+    // 同じpage番号がchapterの総page数によって別名になると、Backendの存在確認と一致しない。
+    return String(index + 1).padStart(3, '0')
 }
 
 function stableHash(value: string): string {
@@ -110,7 +111,7 @@ export function parseWorkFiles(
                 ({ file }) => file.name,
             )
             const pages: ParsedPage[] = sortedPages.map((source, pageIndex) => {
-                const id = padId(pageIndex, sortedPages.length)
+                const id = padId(pageIndex)
                 return {
                     id,
                     fileName: `${id}.webp`,
@@ -120,7 +121,7 @@ export function parseWorkFiles(
                 }
             })
             return {
-                id: padId(chapterIndex, sortedChapters.length),
+                id: padId(chapterIndex),
                 title,
                 pages,
             }

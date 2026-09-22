@@ -141,6 +141,21 @@ describe('Complete upload validation', () => {
             ),
         ).toThrow('Duplicate chapter id')
     })
+
+    it.each([1_000, 10_000])(
+        '%i pagesでもFrontendと同じ最低3桁の画像keyを組み立てる',
+        (pages) => {
+            const parsed = parseCompleteUploadRequest(
+                request({ chapters: [{ id: '001', title: '1巻', pages }] }),
+            )
+            const keys = expectedImageKeys(parsed)
+
+            expect(keys[0]).toBe('manga/baburios-abc123/001/001.webp')
+            expect(keys[998]).toBe('manga/baburios-abc123/001/999.webp')
+            expect(keys[999]).toBe('manga/baburios-abc123/001/1000.webp')
+            expect(keys.at(-1)).toBe(`manga/baburios-abc123/001/${pages}.webp`)
+        },
+    )
 })
 
 describe('Complete upload handler', () => {

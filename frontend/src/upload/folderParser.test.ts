@@ -64,6 +64,18 @@ describe('folder parser', () => {
         expect(work.totalBytes).toBe(10_000)
     })
 
+    it('1000 pagesでも総数に依存せず最低3桁の連番を使う', () => {
+        const files = Array.from({ length: 1_000 }, (_, index) =>
+            source(`大作/1巻/${index + 1}.jpg`, 1),
+        )
+
+        const pages = parseWorkFiles(files).chapters[0]?.pages
+
+        expect(pages?.[0]?.fileName).toBe('001.webp')
+        expect(pages?.[998]?.fileName).toBe('999.webp')
+        expect(pages?.[999]?.fileName).toBe('1000.webp')
+    })
+
     it('汎用natural sortも1、2、10の順になる', () => {
         expect(
             naturalSort(['10.jpg', '1.jpg', '2.jpg'], (value) => value),

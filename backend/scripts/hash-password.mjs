@@ -10,8 +10,8 @@ const password = Buffer.concat(chunks)
     .toString('utf8')
     .replace(/\r?\n$/u, '')
 
-if (password.length < 12 || password.length > 1024) {
-    throw new Error('Password must contain 12-1024 characters')
+if (password.length < 16 || password.length > 1024) {
+    throw new Error('Password must contain 16-1024 characters')
 }
 
 const salt = randomBytes(16)

@@ -190,300 +190,300 @@
 
 ### 4.1 共通基盤
 
-- [ ] API成功レスポンス形式を統一する。
-- [ ] APIエラーレスポンス形式を統一する。
-- [ ] JSON bodyのサイズと型を検証する。
-- [ ] password、private key、presigned URLをログ出力しない。
-- [ ] Lambdaのログ保持期間を短めに設定する。
-- [ ] SSM値を実行環境内で安全にキャッシュする。
-- [ ] 入力値のUnicode、長さ、許可文字を定義する。
+- [x] API成功レスポンス形式を統一する。
+- [x] APIエラーレスポンス形式を統一する。
+- [x] JSON bodyのサイズと型を検証する。
+- [x] password、private key、presigned URLをログ出力しない。
+- [x] Lambdaのログ保持期間を短めに設定する。
+- [x] SSM値を実行環境内で安全にキャッシュする。
+- [x] 入力値のUnicode、長さ、許可文字を定義する。
 
 ### 4.2 閲覧ログイン
 
-- [ ] `POST /api/login` handlerを作成する。
-- [ ] request bodyからpasswordを取得する。
-- [ ] 不正JSONと空passwordを400にする。
-- [ ] SSMから閲覧パスワード導出値を取得する。
-- [ ] `scrypt` 等で入力passwordを導出する。
-- [ ] `timingSafeEqual` で比較する。
-- [ ] 不一致は詳細を漏らさず401にする。
-- [ ] SSMからCloudFront秘密鍵を取得する。
-- [ ] CloudFront Custom Policyを生成する。
-- [ ] Resourceを現在の正規サイトURLの `/manga/*` に限定する。
-- [ ] 有効期限を設定値から計算する。
-- [ ] Signed Cookie 3個を生成する。
-- [ ] `Secure; HttpOnly; SameSite=Lax; Path=/` を設定する。
-- [ ] 成功時に200を返す。
+- [x] `POST /api/login` handlerを作成する。
+- [x] request bodyからpasswordを取得する。
+- [x] 不正JSONと空passwordを400にする。
+- [x] SSMから閲覧パスワード導出値を取得する。
+- [x] `scrypt` 等で入力passwordを導出する。
+- [x] `timingSafeEqual` で比較する。
+- [x] 不一致は詳細を漏らさず401にする。
+- [x] SSMからCloudFront秘密鍵を取得する。
+- [x] CloudFront Custom Policyを生成する。
+- [x] Resourceを現在の正規サイトURLの `/manga/*` に限定する。
+- [x] 有効期限を設定値から計算する。
+- [x] Signed Cookie 3個を生成する。
+- [x] `Secure; HttpOnly; SameSite=Lax; Path=/` を設定する。
+- [x] 成功時に200を返す。
 
 テスト:
 
-- [ ] 正しいpasswordで200になる。
-- [ ] 間違ったpasswordで401になる。
-- [ ] passwordがログへ出ない。
-- [ ] Cookie 3個が返る。
-- [ ] PolicyのResourceが `/manga/*` だけである。
-- [ ] Policyの期限が設定どおりである。
-- [ ] 不正viewer hostを利用できない。
+- [x] 正しいpasswordで200になる。
+- [x] 間違ったpasswordで401になる。
+- [x] passwordがログへ出ない。
+- [x] Cookie 3個が返る。
+- [x] PolicyのResourceが `/manga/*` だけである。
+- [x] Policyの期限が設定どおりである。
+- [x] 不正viewer hostを利用できない。
 
 ### 4.3 閲覧ログアウト
 
-- [ ] `POST /api/logout` handlerを作成する。
-- [ ] Signed Cookie 3個を同じ属性で期限切れにする。
-- [ ] 冪等に200を返す。
+- [x] `POST /api/logout` handlerを作成する。
+- [x] Signed Cookie 3個を同じ属性で期限切れにする。
+- [x] 冪等に200を返す。
 
 テスト:
 
-- [ ] 3個すべてに過去のExpiresまたはMax-Age=0が設定される。
-- [ ] Cookieなしでも安全に成功する。
+- [x] 3個すべてに過去のExpiresまたはMax-Age=0が設定される。
+- [x] Cookieなしでも安全に成功する。
 
 ### 4.4 管理ログイン
 
-- [ ] `POST /api/admin/login` handlerを作成する。
-- [ ] 閲覧用とは別の管理passwordを検証する。
-- [ ] 有効期限とnonceを持つsession payloadを作る。
-- [ ] SSMの管理署名鍵でHMAC署名する。
-- [ ] HttpOnly管理Cookieを返す。
-- [ ] Cookie名、Path、有効期限を定数化する。
-- [ ] 管理ログイン試行に簡潔な防御を設ける。
+- [x] `POST /api/admin/login` handlerを作成する。
+- [x] 閲覧用とは別の管理passwordを検証する。
+- [x] 有効期限とnonceを持つsession payloadを作る。
+- [x] SSMの管理署名鍵でHMAC署名する。
+- [x] HttpOnly管理Cookieを返す。
+- [x] Cookie名、Path、有効期限を定数化する。
+- [x] 管理ログイン試行に簡潔な防御を設ける。
 
 テスト:
 
-- [ ] 正しい管理passwordでCookieが返る。
-- [ ] 閲覧passwordでは管理ログインできない。
-- [ ] payload改ざんを拒否する。
-- [ ] 期限切れを拒否する。
-- [ ] 異なる署名鍵のCookieを拒否する。
+- [x] 正しい管理passwordでCookieが返る。
+- [x] 閲覧passwordでは管理ログインできない。
+- [x] payload改ざんを拒否する。
+- [x] 期限切れを拒否する。
+- [x] 異なる署名鍵のCookieを拒否する。
 
 ### 4.5 管理認証middleware
 
-- [ ] Cookie parserを作成する。
-- [ ] HMACをtiming-safeに検証する。
-- [ ] session用途がadminであることを検証する。
-- [ ] expiryを検証する。
-- [ ] Presignとcomplete handlerから共通利用する。
-- [ ] 未認証は401、権限不一致は403として扱う。
+- [x] Cookie parserを作成する。
+- [x] HMACをtiming-safeに検証する。
+- [x] session用途がadminであることを検証する。
+- [x] expiryを検証する。
+- [x] Presignとcomplete handlerから共通利用する。
+- [x] 未認証または無効な管理Cookieを401として扱う。
 
 ### 4.6 S3 Key検証
 
-- [ ] `workId` と `chapterId` の許可形式を定義する。
-- [ ] page filenameの許可形式を定義する。
-- [ ] `..`、slash、backslash、control characterを拒否する。
-- [ ] S3 Keyはサーバー側で組み立てる。
-- [ ] Clientが任意のBucket keyを指定できないようにする。
-- [ ] 保存先を `manga/{workId}/{chapterId}/{page}.webp` に限定する。
-- [ ] content typeを `image/webp` に限定する。
+- [x] `workId` と `chapterId` の許可形式を定義する。
+- [x] page filenameの許可形式を定義する。
+- [x] `..`、slash、backslash、control characterを拒否する。
+- [x] S3 Keyはサーバー側で組み立てる。
+- [x] Clientが任意のBucket keyを指定できないようにする。
+- [x] 保存先を `manga/{workId}/{chapterId}/{page}.webp` に限定する。
+- [x] content typeを `image/webp` に限定する。
 
 テスト:
 
-- [ ] path traversal相当入力を拒否する。
-- [ ] 不正拡張子を拒否する。
-- [ ] 過大batchを拒否する。
-- [ ] 正常値から期待するkeyが生成される。
+- [x] path traversal相当入力を拒否する。
+- [x] 不正拡張子を拒否する。
+- [x] 過大batchを拒否する。
+- [x] 正常値から期待するkeyが生成される。
 
 ### 4.7 Presigned URL API
 
-- [ ] `POST /api/upload/presign` handlerを作成する。
-- [ ] 管理Cookieを検証する。
-- [ ] batch上限を100件程度にする。
-- [ ] request schemaを検証する。
-- [ ] 短時間有効なPUT URLを生成する。
-- [ ] Content-Type条件を一致させる。
-- [ ] responseへkeyとupload URLを返す。
-- [ ] URLをログ出力しない。
-- [ ] Lambda roleのPutObject権限を漫画prefixに限定する。
+- [x] `POST /api/upload/presign` handlerを作成する。
+- [x] 管理Cookieを検証する。
+- [x] batch上限を100件程度にする。
+- [x] request schemaを検証する。
+- [x] 短時間有効なPUT URLを生成する。
+- [x] Content-Type条件を一致させる。
+- [x] responseへkeyとupload URLを返す。
+- [x] URLをログ出力しない。
+- [x] Lambda roleのPutObject権限を漫画prefixに限定する。
 
 テスト:
 
-- [ ] 未認証を拒否する。
-- [ ] 改ざん管理Cookieを拒否する。
-- [ ] 101件以上等の過大batchを拒否する。
-- [ ] 有効期限が設定範囲内である。
+- [x] 未認証を拒否する。
+- [x] 改ざん管理Cookieを拒否する。
+- [x] 101件以上等の過大batchを拒否する。
+- [x] 有効期限が設定範囲内である。
 - [ ] URLでS3へWebPをPUTできる。
 - [ ] 許可外keyへPUTできない。
 
 ### 4.8 Upload完了API
 
-- [ ] `POST /api/upload/complete` handlerを作成する。
-- [ ] 管理Cookieを検証する。
-- [ ] work/chapter/page情報を再検証する。
-- [ ] 必要に応じてS3 objectの存在を確認する。
-- [ ] 全成功時だけ公開用 `metadata.json` を書く。
-- [ ] metadataを確定後に `manga/index.json` を更新する。
-- [ ] metadataとindexに短いCache-Controlを付ける。
-- [ ] 画像には長いCache-Controlを付ける方式を決める。
-- [ ] index更新競合にETag条件付き書き込みと再試行を使う。
-- [ ] 不完全uploadを公開済みにしない。
+- [x] `POST /api/upload/complete` handlerを作成する。
+- [x] 管理Cookieを検証する。
+- [x] work/chapter/page情報を再検証する。
+- [x] 必要に応じてS3 objectの存在を確認する。
+- [x] 全成功時だけ公開用 `metadata.json` を書く。
+- [x] metadataを確定後に `manga/index.json` を更新する。
+- [x] metadataとindexに短いCache-Controlを付ける。
+- [x] 画像には長いCache-Controlを付ける方式を決める。
+- [x] index更新競合にETag条件付き書き込みと再試行を使う。
+- [x] 不完全uploadを公開済みにしない。
 
 テスト:
 
-- [ ] 画像不足時にcompleteを拒否する。
-- [ ] 正常時にmetadataが生成される。
-- [ ] indexへ作品が追加・更新される。
-- [ ] 競合時に既存作品を消さない。
-- [ ] 同じcomplete requestの再送が安全である。
+- [x] 画像不足時にcompleteを拒否する。
+- [x] 正常時にmetadataが生成される。
+- [x] indexへ作品が追加・更新される。
+- [x] 競合時に既存作品を消さない。
+- [x] 同じcomplete requestの再送が安全である。
 
 ## 5. フロントエンド実装
 
 ### 5.1 既存Frontend整理
 
-- [ ] 既存画面とcomponentを確認する。
-- [ ] 不要な仮実装を特定する。
-- [ ] Vue Router routeを整理する。
-- [ ] Pinia store構成を整理する。
+- [x] 既存画面とcomponentを確認する。
+- [x] 不要な仮実装を特定する。
+- [x] Vue Router routeを整理する。
+- [x] Pinia store構成を整理する。
 - [ ] API clientを1か所へ集約する。
-- [ ] `credentials: 'include'` を使用する。
-- [ ] build時にsecretを埋め込まない。
+- [x] `credentials: 'include'` を使用する。
+- [x] build時にsecretを埋め込まない。
 
 ### 5.2 閲覧ログイン画面
 
-- [ ] password入力とログインbuttonを実装する。
-- [ ] Enter keyでsubmitできるようにする。
-- [ ] 送信中の多重submitを防ぐ。
-- [ ] 401を「パスワードが違います」と表示する。
-- [ ] network errorを区別する。
-- [ ] 成功後に元のrouteまたは作品一覧へ遷移する。
-- [ ] passwordをstoreやlocalStorageへ保存しない。
+- [x] password入力とログインbuttonを実装する。
+- [x] Enter keyでsubmitできるようにする。
+- [x] 送信中の多重submitを防ぐ。
+- [x] 401を「パスワードが違います」と表示する。
+- [x] network errorを区別する。
+- [x] 成功後に元のrouteまたは作品一覧へ遷移する。
+- [x] passwordをstoreやlocalStorageへ保存しない。
 
 ### 5.3 認証状態とログアウト
 
-- [ ] Signed Cookie自体をJavaScriptから読まない設計にする。
-- [ ] private metadataの取得結果で認証切れを判定する。
-- [ ] 401/403時にログイン画面へ誘導する。
-- [ ] Logout buttonを実装する。
-- [ ] logout成功後にFrontendの状態を破棄する。
+- [x] Signed Cookie自体をJavaScriptから読まない設計にする。
+- [x] private metadataの取得結果で認証切れを判定する。
+- [x] 401/403時にログイン画面へ誘導する。
+- [x] Logout buttonを実装する。
+- [x] logout成功後にFrontendの状態を破棄する。
 
 ### 5.4 管理ログイン・管理route
 
-- [ ] `/admin/login` を実装する。
-- [ ] `/admin` を実装する。
-- [ ] 閲覧ログインと管理ログインを明確に分ける。
-- [ ] 管理CookieをJavaScriptから読まない。
-- [ ] Presignの401/403で管理ログインへ誘導する。
-- [ ] Admin logoutを実装する。
+- [x] `/admin/login` を実装する。
+- [x] `/admin` を実装する。
+- [x] 閲覧ログインと管理ログインを明確に分ける。
+- [x] 管理CookieをJavaScriptから読まない。
+- [x] Presignの401/403で管理ログインへ誘導する。
+- [x] Admin logoutを実装する。
 
 ### 5.5 Directory Drag & Drop
 
-- [ ] 作品フォルダを一度だけdropできる領域を作る。
-- [ ] `DataTransferItem` と `webkitGetAsEntry` を使った再帰走査を実装する。
-- [ ] 必要に応じてfolder picker fallbackを用意する。
-- [ ] 作品直下をchapter folderとして解釈する。
-- [ ] chapter直下をpage imageとして解釈する。
-- [ ] 想定外の深さを検出する。
-- [ ] JPEG/PNG以外を除外またはエラー表示する。
-- [ ] 0 chapter、0 pageを拒否する。
-- [ ] 10,000件をDOMへ無制限表示しない。
+- [x] 作品フォルダを一度だけdropできる領域を作る。
+- [x] `DataTransferItem` と `webkitGetAsEntry` を使った再帰走査を実装する。
+- [x] 必要に応じてfolder picker fallbackを用意する。
+- [x] 作品直下をchapter folderとして解釈する。
+- [x] chapter直下をpage imageとして解釈する。
+- [x] 想定外の深さを検出する。
+- [x] JPEG/PNG以外を除外またはエラー表示する。
+- [x] 0 chapter、0 pageを拒否する。
+- [x] 10,000件をDOMへ無制限表示しない。
 
 テスト:
 
-- [ ] 50 chapter × 200 imagesを解析できる。
-- [ ] folder hierarchyを保持できる。
-- [ ] 無関係ファイルを適切に扱える。
-- [ ] 巨大入力でも画像decodeを開始しない段階ではメモリが急増しない。
+- [x] 50 chapter × 200 imagesを解析できる。
+- [x] folder hierarchyを保持できる。
+- [x] 無関係ファイルを適切に扱える。
+- [x] 巨大入力でも画像decodeを開始しない段階ではメモリが急増しない。
 
 ### 5.6 Natural Sortと正規化
 
-- [ ] Natural Sort utilityを実装する。
-- [ ] chapter名を自然順に並べる。
-- [ ] page名を自然順に並べる。
-- [ ] 表示名と内部IDを分離する。
-- [ ] chapter IDをzero paddingする。
-- [ ] page filenameをzero paddingする。
-- [ ] work slug生成ルールを実装する。
+- [x] Natural Sort utilityを実装する。
+- [x] chapter名を自然順に並べる。
+- [x] page名を自然順に並べる。
+- [x] 表示名と内部IDを分離する。
+- [x] chapter IDをzero paddingする。
+- [x] page filenameをzero paddingする。
+- [x] work slug生成ルールを実装する。
 - [ ] slug重複時の扱いを決める。
 
 テスト:
 
-- [ ] `1.jpg, 2.jpg, 10.jpg` が `1, 2, 10` になる。
-- [ ] `1巻, 2巻, 10巻` が自然順になる。
-- [ ] `001.webp` 形式へ正規化される。
-- [ ] 日本語表示名がmetadataに保持される。
+- [x] `1.jpg, 2.jpg, 10.jpg` が `1, 2, 10` になる。
+- [x] `1巻, 2巻, 10巻` が自然順になる。
+- [x] `001.webp` 形式へ正規化される。
+- [x] 日本語表示名がmetadataに保持される。
 
 ### 5.7 Upload前プレビュー
 
-- [ ] 作品名を表示する。
-- [ ] chapter数を表示する。
-- [ ] 画像総数を表示する。
-- [ ] 元データ総容量を表示する。
-- [ ] chapter別page数を表示する。
-- [ ] 警告と解析エラーを表示する。
-- [ ] WebP qualityを設定できるようにする。
-- [ ] Upload開始前にユーザーが内容を確認できるようにする。
+- [x] 作品名を表示する。
+- [x] chapter数を表示する。
+- [x] 画像総数を表示する。
+- [x] 元データ総容量を表示する。
+- [x] chapter別page数を表示する。
+- [x] 警告と解析エラーを表示する。
+- [x] WebP qualityを設定できるようにする。
+- [x] Upload開始前にユーザーが内容を確認できるようにする。
 
 ### 5.8 WebP変換
 
-- [ ] JPEG/PNGを1件ずつdecodeする。
-- [ ] Canvasまたは適切なBrowser APIでWebP Blobを生成する。
-- [ ] quality設定を反映する。
-- [ ] 元画像の向きと寸法を保持する。
-- [ ] 変換失敗をファイル単位で記録する。
-- [ ] 処理後にobject URL、bitmap、canvas、Blob参照を解放する。
+- [x] JPEG/PNGを1件ずつdecodeする。
+- [x] Canvasまたは適切なBrowser APIでWebP Blobを生成する。
+- [x] quality設定を反映する。
+- [x] 元画像の向きと寸法を保持する。
+- [x] 変換失敗をファイル単位で記録する。
+- [x] 処理後にobject URL、bitmap、canvas、Blob参照を解放する。
 - [ ] 極端な画質劣化がないサンプル確認を行う。
-- [ ] メインスレッド停止が問題になる場合だけWeb Workerを導入する。
+- [x] メインスレッド停止が問題になる場合だけWeb Workerを導入する。
 
 ### 5.9 Upload queue
 
-- [ ] queue state modelを作成する。
-- [ ] `pending/converting/uploading/succeeded/failed` を管理する。
-- [ ] 並列数を定数または設定値にする。
-- [ ] Presigned URLをbatch単位で取得する。
-- [ ] 変換後ただちにPUTする。
-- [ ] PUT完了後ただちにBlob参照を解放する。
-- [ ] 10,000件分のWebP Blobを保持しない。
-- [ ] Pauseを実装する。
-- [ ] 同一セッション内Resumeを実装する。
-- [ ] failed itemだけのRetryを実装する。
-- [ ] Retry時に対象画像だけ再変換する。
+- [x] queue state modelを作成する。
+- [x] `pending/converting/uploading/succeeded/failed` を管理する。
+- [x] 並列数を定数または設定値にする。
+- [x] Presigned URLをbatch単位で取得する。
+- [x] 変換後ただちにPUTする。
+- [x] PUT完了後ただちにBlob参照を解放する。
+- [x] 10,000件分のWebP Blobを保持しない。
+- [x] Pauseを実装する。
+- [x] 同一セッション内Resumeを実装する。
+- [x] failed itemだけのRetryを実装する。
+- [x] Retry時に対象画像だけ再変換する。
 
 テスト:
 
-- [ ] concurrency上限を超えない。
-- [ ] Pause後に新規処理が開始されない。
-- [ ] Resumeで残りから再開する。
-- [ ] failed itemだけ再試行される。
-- [ ] 10,000件相当でも全画像を同時decodeしない。
+- [x] concurrency上限を超えない。
+- [x] Pause後に新規処理が開始されない。
+- [x] Resumeで残りから再開する。
+- [x] failed itemだけ再試行される。
+- [x] 10,000件相当でも全画像を同時decodeしない。
 
 ### 5.10 Upload progress
 
-- [ ] 全ファイル数を表示する。
-- [ ] 変換済み数を表示する。
-- [ ] Upload済み数を表示する。
-- [ ] 失敗数を表示する。
-- [ ] 現在のchapter/pageを表示する。
-- [ ] 全体progressを表示する。
-- [ ] 元容量、変換後容量、圧縮率を表示する。
-- [ ] 完了後に成功・失敗summaryを表示する。
-- [ ] Retry failed files buttonを表示する。
+- [x] 全ファイル数を表示する。
+- [x] 変換済み数を表示する。
+- [x] Upload済み数を表示する。
+- [x] 失敗数を表示する。
+- [x] 現在のchapter/pageを表示する。
+- [x] 全体progressを表示する。
+- [x] 元容量、変換後容量、圧縮率を表示する。
+- [x] 完了後に成功・失敗summaryを表示する。
+- [x] Retry failed files buttonを表示する。
 
 ### 5.11 metadata確定
 
-- [ ] 全画像成功時だけcomplete APIを呼ぶ。
-- [ ] 一部失敗時はcomplete APIを呼ばない。
-- [ ] complete失敗と画像PUT失敗を区別する。
-- [ ] complete APIの安全な再試行を実装する。
-- [ ] 完了後に作品ページへの導線を表示する。
+- [x] 全画像成功時だけcomplete APIを呼ぶ。
+- [x] 一部失敗時はcomplete APIを呼ばない。
+- [x] complete失敗と画像PUT失敗を区別する。
+- [x] complete APIの安全な再試行を実装する。
+- [x] 完了後に作品ページへの導線を表示する。
 
 ### 5.12 作品一覧・詳細
 
-- [ ] privateな `/manga/index.json` を取得する。
-- [ ] 作品一覧を表示する。
-- [ ] coverがある場合だけ表示する。
-- [ ] 作品詳細でchapter一覧を表示する。
-- [ ] chapterをNatural Sort済みmetadata順に表示する。
-- [ ] metadata取得401/403を認証切れとして扱う。
-- [ ] metadata破損とnetwork errorを区別する。
+- [x] privateな `/manga/index.json` を取得する。
+- [x] 作品一覧を表示する。
+- [x] coverがある場合だけ表示する。
+- [x] 作品詳細でchapter一覧を表示する。
+- [x] chapterをNatural Sort済みmetadata順に表示する。
+- [x] metadata取得401/403を認証切れとして扱う。
+- [x] metadata破損とnetwork errorを区別する。
 
 ### 5.13 Viewer
 
-- [ ] metadataのpage数から画像URLを組み立てる。
-- [ ] 1万件分URLをAPIから取得しない。
-- [ ] chapter内ページを縦スクロール表示する。
-- [ ] `loading="lazy"` またはIntersectionObserverを使う。
+- [x] metadataのpage数から画像URLを組み立てる。
+- [x] 1万件分URLをAPIから取得しない。
+- [x] chapter内ページを縦スクロール表示する。
+- [x] `loading="lazy"` またはIntersectionObserverを使う。
 - [ ] 現在位置周辺を先読みする。
-- [ ] 同時decode数を抑える。
-- [ ] 前chapter、次chapterを実装する。
-- [ ] chapter先頭への遷移を実装する。
-- [ ] 画像403時に認証切れを案内する。
-- [ ] 画像404とnetwork errorを区別する。
+- [x] 同時decode数を抑える。
+- [x] 前chapter、次chapterを実装する。
+- [x] chapter先頭への遷移を実装する。
+- [x] 画像403時に認証切れを案内する。
+- [x] 画像404とnetwork errorを区別する。
 
 ## 6. セキュリティ確認
 
