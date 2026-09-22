@@ -13,8 +13,20 @@ import {
     completeUploadedWork,
     putPresignedObject,
     requestPresignedFiles,
+    UploadCompletionError,
 } from '@/upload/uploadApi'
-import { UploadManager, type UploadSnapshot } from '@/upload/uploadManager'
+import {
+    UploadManager,
+    type UploadFailure,
+    type UploadSnapshot,
+} from '@/upload/uploadManager'
+import {
+    createCompletionFailurePresentation,
+    createItemFailurePresentation,
+    createUnexpectedFailurePresentation,
+    formatFailureKind,
+    type FailurePresentation,
+} from '@/upload/failurePresentation'
 
 const router = useRouter()
 const adminAuth = useAdminAuthStore()
@@ -28,6 +40,23 @@ const uploadSnapshot = ref<UploadSnapshot | null>(null)
 const isUploadRunning = ref(false)
 const isPaused = ref(false)
 const isPublished = ref(false)
+const isSuccessDialogVisible = ref(false)
+// 成功・失敗とも、処理結果が確定した時だけ表示する。
+const isFailureDialogVisible = ref(false)
+const completionFailure = ref<FailurePresentation | null>(null)
+
+const displayedFailures = computed<readonly UploadFailure[]>(() => {
+    if (completionFailure.value) return []
+    return uploadSnapshot.value?.failures ?? []
+})
+
+const failurePresentation = computed<FailurePresentation>(
+    () =>
+        completionFailure.value ??
+        createItemFailurePresentation(displayedFailures.value),
+)
+
+const failureTotal = computed(() => uploadSnapshot.value?.total ?? 0)
 
 const progressPercent = computed(() => {
     const snapshot = uploadSnapshot.value
@@ -92,6 +121,9 @@ const parseFiles = async (
     uploadManager.value = null
     uploadSnapshot.value = null
     isPublished.value = false
+    isSuccessDialogVisible.value = false
+    isFailureDialogVisible.value = false
+    completionFailure.value = null
     try {
         // この段階ではFile参照とpathだけを整理し、画像decodeは開始しない。
         work.value = parseWorkFiles(await files)
@@ -126,6 +158,15 @@ const handleUploadError = async (error: unknown) => {
         await router.replace('/admin/login')
         return
     }
+    if (error instanceof UploadCompletionError) {
+        completionFailure.value = createCompletionFailurePresentation(
+            error.reason === 'objects-not-ready',
+        )
+        isFailureDialogVisible.value = true
+    } else {
+        completionFailure.value = createUnexpectedFailurePresentation()
+        isFailureDialogVisible.value = true
+    }
     errorMessage.value =
         error instanceof Error ? error.message : 'Uploadに失敗しました。'
 }
@@ -135,11 +176,14 @@ const finalizeUpload = async () => {
     // Clientの成功数だけで公開せず、BackendにS3 objectを再確認させてからmetadataを確定する。
     await completeUploadedWork(work.value)
     isPublished.value = true
+    isSuccessDialogVisible.value = true
 }
 
 const startUpload = async () => {
     if (!work.value || isUploadRunning.value) return
     errorMessage.value = ''
+    completionFailure.value = null
+    isFailureDialogVisible.value = false
     isUploadRunning.value = true
     isPaused.value = false
     const manager = new UploadManager(work.value, {
@@ -159,6 +203,8 @@ const startUpload = async () => {
         const snapshot = manager.snapshot()
         if (snapshot.uploaded === snapshot.total && snapshot.failed === 0) {
             await finalizeUpload()
+        } else if (snapshot.failed > 0) {
+            isFailureDialogVisible.value = true
         }
     } catch (error) {
         await handleUploadError(error)
@@ -180,11 +226,15 @@ const resumeUpload = () => {
 const retryFailed = async () => {
     if (!uploadManager.value || isUploadRunning.value) return
     isUploadRunning.value = true
+    completionFailure.value = null
+    isFailureDialogVisible.value = false
     try {
         await uploadManager.value.retryFailed()
         const snapshot = uploadManager.value.snapshot()
         if (snapshot.uploaded === snapshot.total && snapshot.failed === 0) {
             await finalizeUpload()
+        } else if (snapshot.failed > 0) {
+            isFailureDialogVisible.value = true
         }
     } catch (error) {
         await handleUploadError(error)
@@ -197,6 +247,8 @@ const retryFinalize = async () => {
     if (isUploadRunning.value || isPublished.value) return
     errorMessage.value = ''
     isUploadRunning.value = true
+    completionFailure.value = null
+    isFailureDialogVisible.value = false
     try {
         // complete APIは同じrequestを安全に再送でき、画像の再Uploadは不要。
         await finalizeUpload()
@@ -371,6 +423,96 @@ const retryFinalize = async () => {
                 </router-link>
             </p>
         </section>
+
+        <Modal
+            title="アップロード完了"
+            size="m"
+            :is-show="isSuccessDialogVisible"
+            :is-text-center="true"
+            @close="isSuccessDialogVisible = false"
+        >
+            <template #body>
+                <section class="UploadSuccessDialog">
+                    <span class="UploadSuccessDialog__check" aria-hidden="true">
+                        ✓
+                    </span>
+                    <p class="UploadSuccessDialog__eyebrow">UPLOAD COMPLETE</p>
+                    <h2>アップロードが完了しました</h2>
+                    <p>
+                        すべての画像をWebPへ変換し、作品情報と公開一覧を更新しました。
+                    </p>
+                </section>
+            </template>
+        </Modal>
+
+        <Modal
+            title="アップロード失敗"
+            size="m"
+            :is-show="isFailureDialogVisible"
+            :is-text-center="true"
+            @close="isFailureDialogVisible = false"
+        >
+            <template #body>
+                <section class="UploadFailureDialog">
+                    <span class="UploadFailureDialog__mark" aria-hidden="true">
+                        !
+                    </span>
+                    <p class="UploadFailureDialog__eyebrow">UPLOAD FAILED</p>
+                    <h2>{{ failurePresentation.title }}</h2>
+                    <p>{{ failurePresentation.description }}</p>
+
+                    <p
+                        v-if="displayedFailures.length"
+                        class="UploadFailureDialog__count"
+                    >
+                        失敗: {{ displayedFailures.length }} /
+                        {{ failureTotal }}
+                        images
+                    </p>
+                    <ul
+                        v-if="failurePresentation.kinds.length"
+                        class="UploadFailureDialog__kinds"
+                        aria-label="失敗した処理"
+                    >
+                        <li
+                            v-for="kind in failurePresentation.kinds"
+                            :key="kind"
+                        >
+                            {{ formatFailureKind(kind) }}
+                        </li>
+                    </ul>
+
+                    <section class="UploadFailureDialog__recommendation">
+                        <h3>次に行うこと</h3>
+                        <p>{{ failurePresentation.recommendation }}</p>
+                    </section>
+
+                    <details
+                        v-if="displayedFailures.length"
+                        class="UploadFailureDialog__details"
+                    >
+                        <summary>失敗した画像を確認する</summary>
+                        <ul>
+                            <li
+                                v-for="failure in displayedFailures.slice(0, 5)"
+                                :key="failure.relativePath"
+                            >
+                                <code>{{ failure.relativePath }}</code>
+                                <div>
+                                    <span>{{
+                                        formatFailureKind(failure.kind)
+                                    }}</span>
+                                    <small>{{ failure.message }}</small>
+                                </div>
+                            </li>
+                        </ul>
+                        <p v-if="displayedFailures.length > 5">
+                            ほか {{ displayedFailures.length - 5 }} 件
+                        </p>
+                    </details>
+                </section>
+            </template>
+        </Modal>
     </main>
 </template>
 
@@ -535,6 +677,191 @@ const retryFinalize = async () => {
     @media (max-width: 700px) {
         dl {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+}
+</style>
+
+<style scoped lang="scss">
+.UploadSuccessDialog {
+    display: grid;
+    justify-items: center;
+    padding: 10px 0 4px;
+    text-align: center;
+
+    &__check {
+        display: grid;
+        width: 72px;
+        height: 72px;
+        place-items: center;
+        border-radius: 50%;
+        background: #e9f8ef;
+        box-shadow: inset 0 0 0 2px #5bbf7c;
+        color: #167a3b;
+        font-size: 44px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    &__eyebrow {
+        margin-top: 20px;
+        color: #168043;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+    }
+
+    h2 {
+        margin-top: 8px;
+        color: #27352b;
+        font-size: 23px;
+    }
+
+    p:last-child {
+        margin-top: 12px;
+        color: #5f6b62;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+}
+
+.UploadFailureDialog {
+    display: grid;
+    justify-items: center;
+    padding: 10px 0 4px;
+    text-align: center;
+
+    &__mark {
+        display: grid;
+        width: 72px;
+        height: 72px;
+        place-items: center;
+        border-radius: 50%;
+        background: #fff2e8;
+        box-shadow: inset 0 0 0 2px #df7a35;
+        color: #b74b17;
+        font-size: 46px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    &__eyebrow {
+        margin-top: 20px;
+        color: #b74b17;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+    }
+
+    h2 {
+        margin-top: 8px;
+        color: #482d1c;
+        font-size: 23px;
+    }
+
+    > p:not(.UploadFailureDialog__count) {
+        margin-top: 12px;
+        color: #685b53;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    &__count {
+        margin-top: 14px;
+        color: #8a3f18;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    &__kinds {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 8px;
+
+        li {
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: #fff0e5;
+            color: #9d4215;
+            font-size: 12px;
+            font-weight: 700;
+        }
+    }
+
+    &__recommendation {
+        width: 100%;
+        margin-top: 20px;
+        padding: 14px;
+        border-radius: 8px;
+        background: #f7f3ef;
+        text-align: left;
+
+        h3 {
+            color: #543829;
+            font-size: 14px;
+        }
+
+        p {
+            margin-top: 6px;
+            color: #685b53;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+    }
+
+    &__details {
+        width: 100%;
+        margin-top: 16px;
+        color: #5d534d;
+        font-size: 13px;
+        text-align: left;
+
+        summary {
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        ul {
+            display: grid;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 6px;
+            background: #faf8f6;
+        }
+
+        code {
+            overflow-wrap: anywhere;
+        }
+
+        li > div {
+            display: grid;
+            flex: 0 0 auto;
+            justify-items: end;
+            gap: 3px;
+        }
+
+        span {
+            color: #9d4215;
+        }
+
+        small {
+            max-width: 190px;
+            overflow-wrap: anywhere;
+            color: #766b64;
+            font-size: 11px;
+        }
+
+        > p {
+            margin-top: 8px;
         }
     }
 }

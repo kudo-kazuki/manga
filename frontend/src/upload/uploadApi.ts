@@ -7,6 +7,13 @@ export class AdminAuthenticationError extends Error {
 
 export class UploadCompletionError extends Error {
     public override readonly name = 'UploadCompletionError'
+
+    public constructor(
+        message: string,
+        public readonly reason: 'objects-not-ready' | 'request-failed',
+    ) {
+        super(message)
+    }
 }
 
 export interface CompleteUploadResponse {
@@ -75,10 +82,14 @@ export async function completeUploadedWork(
     if (response.status === 409) {
         throw new UploadCompletionError(
             'S3上で未確認の画像があります。少し待ってmetadata確定を再試行してください。',
+            'objects-not-ready',
         )
     }
     if (!response.ok) {
-        throw new UploadCompletionError('metadataの確定に失敗しました。')
+        throw new UploadCompletionError(
+            'metadataの確定に失敗しました。',
+            'request-failed',
+        )
     }
     return (await response.json()) as CompleteUploadResponse
 }

@@ -331,6 +331,26 @@
 - 管理session確認とlogoutは従来どおり`/admin`で維持し、productionではdeploy console linkを表示しない。
 - Frontend typecheck、lint、38 tests、production buildが成功。Chromiumで管理login後のmenu、`/admin/upload`、`/admin/delete`、local deploy console linkを確認し、upload/delete/deploy操作は実行していない。
 
+### 2026-09-22 — upload成功・失敗modalの実装（未deploy）
+
+- `/admin/upload`の成功・失敗表示は既存の共通`Modal.vue`を使用する。overlay、×、footerの「閉じる」で閉じられる。
+- 成功modalは初期非表示で、`isPublished`（全画像uploadとmetadata公開成功）時だけ開く。
+- 成功・失敗modalはいずれも初期非表示で、実際の処理結果が確定した時だけ開く。
+- 失敗は次の4種類を区別し、原因・対象件数・推奨操作を表示する。
+  - Upload URL取得失敗: ネットワーク確認または再ログイン後、失敗画像だけ再試行
+  - WebP変換失敗: まず再試行し、残る画像は元fileの破損を確認
+  - S3送信失敗: ネットワーク確認後、失敗画像だけ新しいURLで再送
+  - metadata確定失敗: S3確認待ちなら1分程度待ってmetadata確定だけを再試行。画像の再送は不要
+- 失敗した画像の相対pathと処理段階を最大5件まで確認できる。
+- Frontend typecheck、lint、41 tests成功。
+
+### 2026-09-22 — 作品削除の結果・進行表示（未deploy）
+
+- `/admin/delete`で削除成功時・失敗時に、共通`Modal.vue`による結果modalを表示する。
+- 削除中は確認modalを閉じられないままspinnerと「削除中」を表示し、ボタン連打を防止する。
+- 現行DELETE APIは完了時にだけ応答する同期APIのため、正確なobject件数や百分率は取得・表示しない。画像、metadata、公開cacheを順に処理していることだけを明示する。
+- 失敗時は同じ作品の削除を再試行できる。BackendのDELETEは途中まで削除済みでも安全に再実行できる。
+
 ## 中断時の再開手順
 
 1. `git status --short` と本書の最後の実行ログを確認する。

@@ -9,6 +9,17 @@ interface UploadItem {
     status: ConversionStatus
     convertedBytes?: number
     error?: string
+    failureKind?: UploadFailureKind
+}
+
+// 画面側で「再試行すればよい通信エラー」と「ファイルを確認すべき変換エラー」を
+// 区別できるよう、内部の例外文ではなく処理段階を保持する。
+export type UploadFailureKind = 'presign' | 'conversion' | 's3-upload'
+
+export interface UploadFailure {
+    readonly relativePath: string
+    readonly kind: UploadFailureKind
+    readonly message: string
 }
 
 export interface UploadSnapshot {
@@ -20,6 +31,7 @@ export interface UploadSnapshot {
     readonly convertedOriginalBytes: number
     readonly convertedBytes: number
     readonly currentFiles: readonly string[]
+    readonly failures: readonly UploadFailure[]
 }
 
 export interface UploadManagerOptions {
@@ -78,6 +90,7 @@ export class UploadManager {
                 // Retryでは必ず再変換するため、前回PUT失敗時の集計値も一度取り除く。
                 item.convertedBytes = undefined
                 item.error = undefined
+                item.failureKind = undefined
             }
         }
         this.notify()
@@ -117,6 +130,18 @@ export class UploadManager {
                         item.status === 'uploading',
                 )
                 .map((item) => item.page.relativePath),
+            // 元ファイル名は管理者の画面にだけ表示する。利用者向けAPIや公開metadataへは渡さない。
+            failures: this.items.flatMap((item) =>
+                item.status === 'failed' && item.error && item.failureKind
+                    ? [
+                          {
+                              relativePath: item.page.relativePath,
+                              kind: item.failureKind,
+                              message: item.error,
+                          },
+                      ]
+                    : [],
+            ),
         }
     }
 
@@ -166,6 +191,7 @@ export class UploadManager {
                 if (error instanceof AdminAuthenticationError) throw error
                 for (const item of batchItems) {
                     item.status = 'failed'
+                    item.failureKind = 'presign'
                     item.error =
                         error instanceof Error ? error.message : 'URL取得失敗'
                 }
@@ -187,6 +213,7 @@ export class UploadManager {
                     nextIndex += 1
                     if (!item) return
                     try {
+                        item.failureKind = undefined
                         item.status = 'converting'
                         this.notify()
                         const blob = await this.options.convert(
@@ -203,6 +230,11 @@ export class UploadManager {
                         item.status = 'succeeded'
                     } catch (error) {
                         item.status = 'failed'
+                        // convertedBytesの有無で、WebP変換前後のどちらで失敗したかを判定できる。
+                        item.failureKind =
+                            item.convertedBytes === undefined
+                                ? 'conversion'
+                                : 's3-upload'
                         item.error =
                             error instanceof Error
                                 ? error.message

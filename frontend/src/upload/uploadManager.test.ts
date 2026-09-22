@@ -100,6 +100,13 @@ describe('UploadManager', () => {
 
         await manager.run()
         expect(manager.snapshot().failed).toBe(1)
+        expect(manager.snapshot().failures).toEqual([
+            {
+                relativePath: '作品/1巻/2.jpg',
+                kind: 'conversion',
+                message: 'convert failed',
+            },
+        ])
         await manager.retryFailed()
         expect(manager.snapshot().failed).toBe(0)
         expect(requestedNames).toEqual([

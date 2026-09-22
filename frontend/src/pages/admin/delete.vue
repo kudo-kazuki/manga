@@ -15,6 +15,10 @@ const selectedWork = ref<AdminWorkEntry | null>(null)
 const isLoading = ref(true)
 const isDeleting = ref(false)
 const errorMessage = ref('')
+const deletedWorkTitle = ref('')
+const deleteFailureMessage = ref('')
+const isDeleteSuccessDialogVisible = ref(false)
+const isDeleteFailureDialogVisible = ref(false)
 
 const isDialogOpen = computed({
     get: () => selectedWork.value !== null,
@@ -73,16 +77,24 @@ const confirmDelete = async () => {
     if (!work || isDeleting.value) return
     isDeleting.value = true
     errorMessage.value = ''
+    // 前回の結果を残さず、今回のDELETE requestの結果だけをmodalへ表示する。
+    isDeleteSuccessDialogVisible.value = false
+    isDeleteFailureDialogVisible.value = false
+    deleteFailureMessage.value = ''
     try {
         await deleteAdminWork(work.id)
         works.value = works.value.filter((entry) => entry.id !== work.id)
         selectedWork.value = null
+        deletedWorkTitle.value = work.title
+        isDeleteSuccessDialogVisible.value = true
     } catch (error) {
         if (await handleAuthError(error)) return
-        errorMessage.value =
+        deleteFailureMessage.value =
             error instanceof Error
                 ? error.message
                 : '作品の削除に失敗しました。'
+        // DELETE APIは同じ作品IDへの再送を安全に扱えるため、途中で失敗しても再試行できる。
+        isDeleteFailureDialogVisible.value = true
     } finally {
         isDeleting.value = false
     }
@@ -138,12 +150,21 @@ const confirmDelete = async () => {
             :show-close="!isDeleting"
             :before-close="beforeDialogClose"
         >
-            <p>
+            <p v-if="!isDeleting">
                 「{{
                     selectedWork?.title
                 }}」の画像とmetadataを完全に削除します。
                 この操作は取り消せません。
             </p>
+            <section v-else class="DeletePage__deleting" role="status">
+                <span class="DeletePage__spinner" aria-hidden="true"></span>
+                <div>
+                    <strong>作品を削除中です…</strong>
+                    <p>
+                        画像、metadata、公開cacheを順に削除しています。正確な件数進捗はAPIから取得できないため、完了までこの画面を閉じずにお待ちください。
+                    </p>
+                </div>
+            </section>
             <template #footer>
                 <div class="DeletePage__dialogActions">
                     <button
@@ -164,6 +185,54 @@ const confirmDelete = async () => {
                 </div>
             </template>
         </el-dialog>
+
+        <Modal
+            title="削除完了"
+            size="m"
+            :is-show="isDeleteSuccessDialogVisible"
+            :is-text-center="true"
+            @close="isDeleteSuccessDialogVisible = false"
+        >
+            <template #body>
+                <section class="DeleteSuccessDialog">
+                    <span class="DeleteSuccessDialog__check" aria-hidden="true">
+                        ✓
+                    </span>
+                    <p class="DeleteSuccessDialog__eyebrow">DELETE COMPLETE</p>
+                    <h2>作品を削除しました</h2>
+                    <p>
+                        「{{
+                            deletedWorkTitle
+                        }}」の画像、metadata、公開一覧を更新しました。
+                    </p>
+                </section>
+            </template>
+        </Modal>
+
+        <Modal
+            title="削除失敗"
+            size="m"
+            :is-show="isDeleteFailureDialogVisible"
+            :is-text-center="true"
+            @close="isDeleteFailureDialogVisible = false"
+        >
+            <template #body>
+                <section class="DeleteFailureDialog">
+                    <span class="DeleteFailureDialog__mark" aria-hidden="true">
+                        !
+                    </span>
+                    <p class="DeleteFailureDialog__eyebrow">DELETE FAILED</p>
+                    <h2>作品を削除できませんでした</h2>
+                    <p>{{ deleteFailureMessage }}</p>
+                    <section class="DeleteFailureDialog__recommendation">
+                        <h3>次に行うこと</h3>
+                        <p>
+                            少し待ってから、確認画面の「削除する」をもう一度押してください。同じ作品の削除を再試行しても、すでに消えた画像を復元・重複削除することはありません。
+                        </p>
+                    </section>
+                </section>
+            </template>
+        </Modal>
     </main>
 </template>
 
@@ -270,6 +339,144 @@ const confirmDelete = async () => {
             border-color: #b42318;
             background: #b42318;
             color: #fff;
+        }
+    }
+
+    &__deleting {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+
+        strong {
+            color: #543829;
+        }
+
+        p {
+            margin-top: 6px;
+            color: #685b53;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+    }
+
+    &__spinner {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+        border: 3px solid #ead1be;
+        border-top-color: #b95620;
+        border-radius: 50%;
+        animation: DeletePage-spin 0.8s linear infinite;
+    }
+}
+
+@keyframes DeletePage-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>
+
+<style scoped lang="scss">
+.DeleteSuccessDialog,
+.DeleteFailureDialog {
+    display: grid;
+    justify-items: center;
+    padding: 10px 0 4px;
+    text-align: center;
+}
+
+.DeleteSuccessDialog {
+    &__check {
+        display: grid;
+        width: 72px;
+        height: 72px;
+        place-items: center;
+        border-radius: 50%;
+        background: #e9f8ef;
+        box-shadow: inset 0 0 0 2px #5bbf7c;
+        color: #167a3b;
+        font-size: 44px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    &__eyebrow {
+        margin-top: 20px;
+        color: #168043;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+    }
+
+    h2 {
+        margin-top: 8px;
+        color: #27352b;
+        font-size: 23px;
+    }
+
+    p:last-child {
+        margin-top: 12px;
+        color: #5f6b62;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+}
+
+.DeleteFailureDialog {
+    &__mark {
+        display: grid;
+        width: 72px;
+        height: 72px;
+        place-items: center;
+        border-radius: 50%;
+        background: #fff2e8;
+        box-shadow: inset 0 0 0 2px #df7a35;
+        color: #b74b17;
+        font-size: 46px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    &__eyebrow {
+        margin-top: 20px;
+        color: #b74b17;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+    }
+
+    h2 {
+        margin-top: 8px;
+        color: #482d1c;
+        font-size: 23px;
+    }
+
+    > p {
+        margin-top: 12px;
+        color: #685b53;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    &__recommendation {
+        width: 100%;
+        margin-top: 20px;
+        padding: 14px;
+        border-radius: 8px;
+        background: #f7f3ef;
+        text-align: left;
+
+        h3 {
+            color: #543829;
+            font-size: 14px;
+        }
+
+        p {
+            margin-top: 6px;
+            color: #685b53;
+            font-size: 13px;
+            line-height: 1.7;
         }
     }
 }
