@@ -56,7 +56,7 @@
 - [ ] Presigned URL有効期限の初期値を15分とする。
 - [ ] Presign batch sizeの初期値を100件とする。
 - [ ] Upload concurrencyの初期値を5程度とする。
-- [ ] WebP qualityの初期値を0.85とする。
+- [x] WebP qualityの初期値を0.70とする。
 - [ ] 任意の独自ドメイン設定を型で表現する。
 
 ## 3. インフラ実装

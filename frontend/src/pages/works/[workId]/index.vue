@@ -40,10 +40,13 @@ onMounted(loadWork)
 </script>
 
 <template>
-    <main class="WorkPage">
+    <!-- 未認証時に作品一覧への導線や作品枠を一瞬でも見せないため、認証確認中は専用表示にする。 -->
+    <main v-if="isLoading" class="WorkPage WorkPage--loading" aria-busy="true">
+        <p class="WorkPage__loadingLabel">認証を確認中…</p>
+    </main>
+    <main v-else class="WorkPage">
         <router-link class="WorkPage__back" to="/">← 作品一覧</router-link>
-        <p v-if="isLoading" class="WorkPage__state">読み込み中…</p>
-        <section v-else-if="errorMessage" class="WorkPage__error" role="alert">
+        <section v-if="errorMessage" class="WorkPage__error" role="alert">
             <p>{{ errorMessage }}</p>
             <button type="button" @click="loadWork">再読み込み</button>
         </section>
@@ -72,6 +75,16 @@ onMounted(loadWork)
     min-height: 100%;
     margin: 0 auto;
     padding: 32px 24px 80px;
+
+    &--loading {
+        display: grid;
+        place-items: center;
+    }
+
+    &__loadingLabel {
+        color: #716d65;
+        font-size: 13px;
+    }
 
     &__back {
         color: #716d65;

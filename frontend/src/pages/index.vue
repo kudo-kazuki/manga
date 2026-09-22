@@ -38,18 +38,21 @@ onMounted(loadWorks)
 </script>
 
 <template>
-    <main class="LibraryPage">
+    <!-- 未認証の403を受けるまで作品一覧の見出し・カードをDOMへ出さない。 -->
+    <main
+        v-if="isLoading"
+        class="LibraryPage LibraryPage--loading"
+        aria-busy="true"
+    >
+        <p class="LibraryPage__loadingLabel">認証を確認中…</p>
+    </main>
+    <main v-else class="LibraryPage">
         <header>
             <p class="LibraryPage__eyebrow">PRIVATE LIBRARY</p>
             <h1>作品一覧</h1>
         </header>
 
-        <p v-if="isLoading" class="LibraryPage__state">読み込み中…</p>
-        <section
-            v-else-if="errorMessage"
-            class="LibraryPage__error"
-            role="alert"
-        >
+        <section v-if="errorMessage" class="LibraryPage__error" role="alert">
             <p>{{ errorMessage }}</p>
             <button type="button" @click="loadWorks">再読み込み</button>
         </section>
@@ -76,6 +79,16 @@ onMounted(loadWorks)
     min-height: 100%;
     margin: 0 auto;
     padding: 36px 24px 80px;
+
+    &--loading {
+        display: grid;
+        place-items: center;
+    }
+
+    &__loadingLabel {
+        color: #716d65;
+        font-size: 13px;
+    }
 
     &__eyebrow {
         color: #85734c;

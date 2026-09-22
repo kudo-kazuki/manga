@@ -35,7 +35,7 @@
 - chapter IDとpage filenameのzero padding
 - 日本語表示名を保持した安全なASCII作品ID
 - 作品名、chapter数、画像数、元容量、chapter別page数のpreview
-- WebP quality設定UI（初期値0.85）
+- WebP quality設定UI（当初の初期値0.85。2026-09-23から0.70）
 - Canvasを使った1画像単位のWebP変換
 - 並列数制限付き変換queue
 - Pause / Resume / failed itemだけのRetryが可能なqueue構造
