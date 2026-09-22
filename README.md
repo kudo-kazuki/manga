@@ -132,6 +132,66 @@ aws ssm describe-parameters --region $region --parameter-filters Key=Name,Option
 
 Lambdaは実行時にSecureStringを復号し、warm container内へcacheします。値をrotationした直後は、古いLambda containerが破棄されるまで旧値を使う場合があります。
 
+### 閲覧用・管理用passwordだけを再登録する
+
+passwordを忘れた場合も、漫画データ、CloudFront鍵、管理Cookie署名鍵を作り直す必要はありません。新しいpasswordをpassword managerへ保存してから、対象のpassword hashだけを再生成し、対応するSSM Parameterを上書きします。
+
+`prepare-secrets.ps1 -Force` は全5件のsecretと鍵をまとめてrotationする用途なので、passwordだけの変更には使用しません。
+
+次の例は、平文passwordをcommand line引数やfileへ保存せず、PowerShell process内からhash生成scriptのstdinへ渡します。`viewer`または`admin`を選択してください。
+
+```powershell
+cd D:\manga
+$env:AWS_PROFILE = 'kudo-admin'
+$region = 'ap-northeast-1'
+$target = Read-Host '再登録対象をviewerまたはadminで入力'
+$settings = @{
+    viewer = @{
+        Parameter = '/manga/viewer-password-hash'
+        File = 'viewer-password-hash.txt'
+    }
+    admin = @{
+        Parameter = '/manga/admin-password-hash'
+        File = 'admin-password-hash.txt'
+    }
+}
+if (-not $settings.ContainsKey($target)) {
+    throw 'viewerまたはadminを指定してください。'
+}
+$selected = $settings[$target]
+
+$securePassword = Read-Host '新しいpassword（16文字以上）' -AsSecureString
+$pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+try {
+    $plainPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
+    $hash = $plainPassword | & node .\backend\scripts\hash-password.mjs
+    if ($LASTEXITCODE -ne 0) { throw 'password hashの生成に失敗しました。' }
+}
+finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
+    $plainPassword = $null
+    $securePassword.Dispose()
+}
+
+$hashPath = Join-Path (Resolve-Path .\secrets) $selected.File
+[IO.File]::WriteAllText(
+    $hashPath,
+    $hash.Trim(),
+    [Text.UTF8Encoding]::new($false)
+)
+aws ssm put-parameter `
+    --region $region `
+    --name $selected.Parameter `
+    --type SecureString `
+    --tier Standard `
+    --value "file://$hashPath" `
+    --overwrite
+```
+
+再登録後も、発行済みCookieはそれぞれの有効期限まで利用できる。閲覧Cookieは最大24時間、管理Cookieは最大1時間である。即時に全sessionを失効させる必要がある場合だけ、passwordとは別に対応する署名鍵のrotationを行う。
+
+Lambdaが旧SSM値を一時cacheしている間は、新しいpasswordの反映に時間がかかる場合がある。平文passwordはAWSにもlocal fileにも保存されないため、後から確認する場合はpassword managerを正本とする。
+
 ## CDK bootstrap
 
 account/regionごとに初回だけ実行します。これはAWS resourceを作るため、account IDを必ず確認してから手動で実行してください。
