@@ -44,3 +44,5 @@ src/config/auth.local.json
 *.njsproj
 *.sln
 *.sw?
+
+.password
