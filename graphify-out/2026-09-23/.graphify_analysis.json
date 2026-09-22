@@ -1030,13 +1030,13 @@
   },
   "gods": [
     {
-      "id": "frontend_tsconfig_app_compileroptions",
-      "label": "compilerOptions",
+      "id": "ref_vue",
+      "label": "vue",
       "degree": 21
     },
     {
-      "id": "ref_vue",
-      "label": "vue",
+      "id": "frontend_tsconfig_app_compileroptions",
+      "label": "compilerOptions",
       "degree": 21
     },
     {
@@ -1104,74 +1104,41 @@
       "why": "peripheral node `requestPresign()` unexpectedly reaches hub `AdminAuthenticationError`"
     },
     {
-      "source": "handler()",
-      "target": "CachedSsmParameterReader",
+      "source": "MemoryStorage",
+      "target": "MangaIndex",
       "source_files": [
-        "backend/functions/admin-login.ts",
-        "backend/shared/parameters.ts"
+        "backend/test/admin-works.test.ts",
+        "backend/shared/metadata.ts"
       ],
       "confidence": "EXTRACTED",
-      "relation": "calls",
+      "relation": "references",
       "why": "bridges separate communities"
     },
     {
-      "source": "handler()",
-      "target": "CachedSsmParameterReader",
+      "source": "MemoryStorage",
+      "target": "AdminWorksStorage",
       "source_files": [
-        "backend/functions/admin-session.ts",
-        "backend/shared/parameters.ts"
+        "backend/test/admin-works.test.ts",
+        "backend/functions/admin-works.ts"
       ],
       "confidence": "EXTRACTED",
-      "relation": "calls",
+      "relation": "implements",
       "why": "bridges separate communities"
     },
     {
-      "source": "handler()",
-      "target": "CachedSsmParameterReader",
+      "source": "LoginDependencies",
+      "target": "ParameterReader",
       "source_files": [
-        "backend/functions/admin-works.ts",
+        "backend/functions/login.ts",
         "backend/shared/parameters.ts"
       ],
       "confidence": "EXTRACTED",
-      "relation": "calls",
+      "relation": "references",
       "why": "bridges separate communities"
     }
   ],
-  "questions": [
-    {
-      "type": "bridge_node",
-      "question": "Why does `vue` connect `vue` to `pages/login.vue`, `admin/login.vue`, `pages/index.vue`, `[workId]/index.vue`, `upload.vue`, `ref_composables`, `manga/api.ts`, `delete.vue`, `LoadingOverlay.vue`, `useWindowSizeAndDevice.ts`, `components.d.ts`, `useElScrollbarScroll.ts`, `frontend/package.json`, `deploy.vue`, `[chapterId].vue`, `App.vue`, `main.ts`?",
-      "why": "High betweenness centrality (0.255) - this node is a cross-community bridge."
-    },
-    {
-      "type": "bridge_node",
-      "question": "Why does `pinia` connect `manga/api.ts` to `frontend/package.json`, `main.ts`?",
-      "why": "High betweenness centrality (0.057) - this node is a cross-community bridge."
-    },
-    {
-      "type": "bridge_node",
-      "question": "Why does `@types/node` connect `infra/package.json` to `frontend/package.json`, `backend/package.json`?",
-      "why": "High betweenness centrality (0.050) - this node is a cross-community bridge."
-    },
-    {
-      "type": "isolated_nodes",
-      "question": "What connects `PresignBatchFile`, `PresignedFile`, `CompleteUploadResponse` to the rest of the system?",
-      "why": "371 weakly-connected nodes found - possible documentation gaps or missing edges."
-    },
-    {
-      "type": "low_cohesion",
-      "question": "Should `uploadManager.ts` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.06662770309760374 - nodes in this community are weakly interconnected."
-    },
-    {
-      "type": "low_cohesion",
-      "question": "Should `complete-upload.ts` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.09343200740055504 - nodes in this community are weakly interconnected."
-    },
-    {
-      "type": "low_cohesion",
-      "question": "Should `dev-server.mjs` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.0821256038647343 - nodes in this community are weakly interconnected."
-    }
-  ]
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
 }
