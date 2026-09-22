@@ -7,6 +7,11 @@ const adminAuth = useAdminAuthStore()
 const password = ref('')
 const errorMessage = ref('')
 const isSubmitting = ref(false)
+const isLocalDeployConsoleVisible = computed(
+    () =>
+        import.meta.env.DEV &&
+        ['localhost', '127.0.0.1'].includes(window.location.hostname),
+)
 
 const submit = async () => {
     if (isSubmitting.value) return
@@ -52,6 +57,13 @@ const submit = async () => {
                 >
                     {{ isSubmitting ? '確認中…' : 'ログイン' }}
                 </Button>
+                <router-link
+                    v-if="isLocalDeployConsoleVisible"
+                    class="AdminLogin__deployLink"
+                    to="/local/deploy"
+                >
+                    ローカル deploy console
+                </router-link>
             </form>
         </section>
     </main>
@@ -102,6 +114,12 @@ const submit = async () => {
     &__error {
         color: #c11d1d;
         font-size: 13px;
+    }
+
+    &__deployLink {
+        color: #556e8e;
+        font-size: 12px;
+        text-align: center;
     }
 }
 </style>

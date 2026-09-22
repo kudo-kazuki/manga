@@ -395,6 +395,16 @@
 - [x] 作品名と不可逆性を示す確認modalを表示する。
 - [x] 削除処理中のbutton無効化とhandler guardで二重送信を防ぐ。
 - [x] 管理session切れでは管理loginへ戻す。
+
+### 5.7 Local deploy console
+
+- [x] local開発時かつ`localhost`/`127.0.0.1`だけで表示する`/local/deploy`画面を実装する。
+- [x] `127.0.0.1` bind、接続元/Host/Origin確認を行うlocal runnerを実装する。
+- [x] Browserから任意commandを受け取らず、Backend Lambda更新とFrontend配信だけを固定jobとして実行する。
+- [x] Backend jobではCloudFormationを使わず、既存Lambdaのコードだけを更新する。
+- [x] Frontend jobではbuild、Frontend Bucket upload、CloudFront invalidationだけを実行する。
+- [x] 対象AWS accountを検証し、別accountへの実行を拒否する。
+- [x] SSEで実行logと状態を表示し、同時実行を1件に制限する。
 - [x] 巨大入力でも画像decodeを開始しない段階ではメモリが急増しない。
 
 ### 5.6 Natural Sortと正規化

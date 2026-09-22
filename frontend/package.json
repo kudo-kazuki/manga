@@ -8,6 +8,9 @@
     },
     "scripts": {
         "dev": "vite --host",
+        "dev:deploy-console": "node ./scripts/dev-deploy-console.mjs",
+        "deploy:backend": "node ./scripts/deploy-backend-lambdas.mjs",
+        "deploy:frontend": "node ./scripts/deploy-frontend.mjs",
         "type-check": "vue-tsc -b",
         "build": "vue-tsc -b && vite build",
         "lint": "eslint .",

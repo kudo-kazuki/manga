@@ -297,6 +297,26 @@
 
 作品削除・30日sessionのdeployと本番E2Eは完了。既存コンテンツの損失なし。
 
+### 2026-09-22 — Local deploy console実装（未deploy）
+
+- GatherModokiのlocal deploy consoleを参照し、`/local/deploy`と`frontend/scripts/local-deploy-runner.mjs`を追加した。
+- Browserから実行可能なjobは固定2件だけ。Backendは既存Lambdaのコード更新だけ、Frontendはbuild・Frontend Bucket upload・CloudFront invalidationだけに限定する。
+- CDK/CloudFormation、CloudFront設定、IAM、SSM、漫画Bucket、MangaStackのresource変更はrunnerから実行できない。
+- runnerは`127.0.0.1:5175`だけで待受け、接続元address、Host、Vite local originを検証する。AWS account `702347290971`以外はjobを停止する。
+- local UIとrunnerを起動する`npm run dev:deploy-console`、個別jobの`npm run deploy:backend`/`npm run deploy:frontend`を追加した。
+- Frontend typecheck、lint、38 tests、production buildが成功。runnerのhealth endpointと未定義job 404、既存Vite serverへ相乗りする起動を確認した。
+- Chromiumで`/local/deploy`を開き、local限定UI、runner接続、固定2ボタンを確認した。実deploy buttonは押していないため、本記録の変更は未deploy。
+
+### 2026-09-22 — Local frontend deployのWindows spawn修正（未deploy）
+
+- 利用者がFrontend deploy buttonを実行したところ、build開始前に`spawn EINVAL`で失敗した。S3 uploadとCloudFront invalidationは未実行。
+- 原因はWindowsで`npm.cmd`をNode.js `spawnSync`へ直接渡していたこと。GatherModokiと同じ`cmd.exe /c`経由へ変更した。
+- Backend bundlingも`.cmd` shimを直接spawnせず、esbuild本体をNode.jsから実行する方式へ変更した。
+- Frontend typecheck、lint、38 tests成功。`cmd.exe /c npm run build`によるproduction build成功を確認した。
+- 画面は失敗時に「完了しました」と表示していたため、失敗と実行log確認を明示する文言へ修正した。
+- 続くBrowser再現で、runner自身が`npm.cmd`を直接spawnして`EINVAL`となっていることを確認。runnerもGatherModokiと同じ`cmd.exe /c npm run <fixed job>`方式へ修正した。
+- `cmd.exe /c npm --version`のNode child process起動成功、Frontend typecheckとlint成功を確認。既に起動中のrunnerはNode processのため、この修正を反映するには利用者側でrunnerを再起動する必要がある。
+
 ## 中断時の再開手順
 
 1. `git status --short` と本書の最後の実行ログを確認する。

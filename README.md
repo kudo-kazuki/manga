@@ -64,6 +64,23 @@ Copy-Item .env.local.example .env.local
 
 `http://localhost:4646`で画面を確認できます。`.env.local`が設定されている場合、Viteは`/api/*`と`/manga/*`だけをdeploy済みCloudFrontへproxyするため、local画面からログイン・閲覧・管理uploadも確認できます。PasswordやAWS credentialはFrontendへ保存しません。
 
+### Local deploy console
+
+開発PCのBrowserから限定したdeployだけを行う場合は、`AWS_PROFILE`を設定した同じPowerShellで次を実行します。
+
+```powershell
+cd D:\manga\frontend
+$env:AWS_PROFILE = 'your-aws-profile'
+& 'C:\Program Files\nodejs\npm.cmd' run dev:deploy-console
+```
+
+`http://localhost:4646/local/deploy`（または管理login画面のlocal link）から実行できます。この画面とrunnerはlocal開発時だけ利用でき、runnerは`127.0.0.1:5175`でのみ待受けます。任意commandの入力はできず、同時実行も1件までです。
+
+- **Backend Lambdaを更新**: `backend/`をbundleし、既存8 Lambdaのコードだけを更新します。CloudFormation/CDK、IAM、環境変数、API route、S3、CloudFront設定は変更しません。これらを変えた場合は通常のCDK deployを手動で行います。
+- **Frontendを配信**: `frontend`をbuildし、既存Frontend Bucketへupload後、CloudFront invalidationを1件要求します。漫画Bucketやインフラ設定は変更しません。古いhash付きassetは白画面防止のため削除しません。
+
+どちらのジョブも対象AWS account `702347290971`を確認し、違うaccountのcredentialでは停止します。
+
 Presigned PUTはBrowserからS3へ直接送るため、Manga BucketのCORSではdeploy済みCloudFront originに加えて`http://localhost:4646`だけを許可します。任意originを許可する`*`は使用しません。`.env.local`は環境固有値なのでGit無視対象です。
 
 全local検証:
@@ -146,7 +163,7 @@ passwordを忘れた場合も、漫画データ、CloudFront鍵、管理Cookie�
 
 ```powershell
 cd D:\manga
-$env:AWS_PROFILE = 'kudo-admin'
+$env:AWS_PROFILE = 'your-aws-profile'
 $region = 'ap-northeast-1'
 $target = Read-Host '再登録対象をviewerまたはadminで入力'
 $settings = @{

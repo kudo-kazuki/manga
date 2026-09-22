@@ -12,7 +12,10 @@ const router = useRouter()
 const authStore = useAuthStore()
 // 管理画面は独立したheaderを持つため、閲覧側のheaderとlogoutを重ねない。
 const isStandalonePage = computed(
-    () => route.path === '/login' || route.path.startsWith('/admin'),
+    () =>
+        route.path === '/login' ||
+        route.path.startsWith('/admin') ||
+        route.path.startsWith('/local'),
 )
 const scrollbar = ref<ScrollbarInstance | null>(null)
 const { height, deviceType } = useWindowSizeAndDevice()
