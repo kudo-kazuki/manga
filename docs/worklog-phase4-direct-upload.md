@@ -45,7 +45,7 @@ S3への直接PUTだけはBrowserから別originへ接続するため、漫画Bu
 - Origin: CloudFormation Parameter `UploadAllowedOrigin` の完全一致値
 - `AllowedOrigins: *` は使用しない
 
-CloudFront標準domainはDistribution作成後に判明し、Bucket CORSから直接参照すると循環依存になる。そのため初回deploy時の既定値は開発用の `http://localhost:4646` とし、`SiteUrl` が判明した後に次のようにOriginを指定して再deployする。
+CloudFront標準domainはDistribution作成後に判明し、Bucket CORSから直接参照すると循環依存になる。そのため初回deploy時の既定値は安全な無効originとし、`SiteUrl` が判明した後に次のようにOriginを指定して再deployする。2026-09-22の実AWS確認で、local Vite serverからもuploadできるよう`http://localhost:4646`は本番originと別に固定許可した。
 
 ```powershell
 cd D:\manga\infra

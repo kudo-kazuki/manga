@@ -5,6 +5,7 @@ import {
     Stack,
     StackProps,
     aws_cloudfront as cloudfront,
+    aws_iam as iam,
     aws_s3_deployment as s3deploy,
 } from 'aws-cdk-lib'
 import { Construct } from 'constructs'
@@ -32,14 +33,15 @@ export class MangaStack extends Stack {
     ) {
         super(scope, id, props)
 
-        // CloudFront標準domainはDistribution作成後に決まるため、初回はlocalhostでdeployし、
+        // CloudFront標準domainはDistribution作成後に決まるため、初回は無効なplaceholderでdeployし、
         // OutputされたSiteUrlを指定して再deployできる明示的な2段階方式にする。
+        // localhostはstorage側で別途固定許可し、本番originを更新してもlocal uploadを維持する。
         const uploadAllowedOrigin = new CfnParameter(
             this,
             'UploadAllowedOrigin',
             {
                 type: 'String',
-                default: 'http://localhost:4646',
+                default: 'https://invalid.example',
                 description:
                     'Exact browser origin allowed to upload directly to S3; never use *',
             },
@@ -49,7 +51,7 @@ export class MangaStack extends Stack {
             uploadAllowedOrigin.valueAsString,
         )
         const { publicKey, keyGroup } = createViewerAuth(this)
-        const { httpApi } = createMangaApi(this, {
+        const { httpApi, adminWorksFunction } = createMangaApi(this, {
             cloudFrontKeyPairId: publicKey.publicKeyId,
             viewerPasswordParameterName:
                 props.viewerPasswordParameterName ??
@@ -58,14 +60,15 @@ export class MangaStack extends Stack {
                 props.cloudFrontPrivateKeyParameterName ??
                 '/manga/cloudfront-private-key',
             signedCookieTtlSeconds:
-                props.signedCookieTtlSeconds ?? 24 * 60 * 60,
+                props.signedCookieTtlSeconds ?? 30 * 24 * 60 * 60,
             adminPasswordParameterName:
                 props.adminPasswordParameterName ??
                 '/manga/admin-password-hash',
             adminSigningKeyParameterName:
                 props.adminSigningKeyParameterName ??
                 '/manga/admin-signing-key',
-            adminSessionTtlSeconds: props.adminSessionTtlSeconds ?? 60 * 60,
+            adminSessionTtlSeconds:
+                props.adminSessionTtlSeconds ?? 30 * 24 * 60 * 60,
             mangaBucket,
             presignedUrlTtlSeconds: 15 * 60,
         })
@@ -75,6 +78,16 @@ export class MangaStack extends Stack {
             httpApi,
             mangaKeyGroup: keyGroup,
         })
+        adminWorksFunction.addEnvironment(
+            'CLOUDFRONT_DISTRIBUTION_ID',
+            distribution.distributionId,
+        )
+        adminWorksFunction.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ['cloudfront:CreateInvalidation'],
+                resources: [distribution.distributionArn],
+            }),
+        )
 
         // 漫画画像はCDK assetへ含めない。ここで配布するのはfrontend/distのSPA成果物だけ。
         // distributionPathsを指定し、SPA更新後に古いindex.htmlが残らないようにする。

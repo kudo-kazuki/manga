@@ -17,12 +17,12 @@ Playwright が操作する Chromium で `frontend/` を実際に開き、画面�
 
 ## 構成
 
-| ファイル | 用途 |
-|---|---|
-| `preflight.mjs` | Playwright、Chromium、dev サーバーを起動せずに診断する |
+| ファイル         | 用途                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `preflight.mjs`  | Playwright、Chromium、dev サーバーを起動せずに診断する                                  |
 | `dev-server.mjs` | Windows のポート・親子プロセス情報で dev サーバーの所有者を判定し、安全に起動・停止する |
-| `lib.mjs` | Playwright を読み込み、ページ遷移・待機・スクリーンショットを共通化する |
-| `shot.mjs` | 指定パスのスクリーンショットを1枚撮る CLI |
+| `lib.mjs`        | Playwright を読み込み、ページ遷移・待機・スクリーンショットを共通化する                 |
+| `shot.mjs`       | 指定パスのスクリーンショットを1枚撮る CLI                                               |
 
 ## 前提を整える
 
@@ -50,6 +50,16 @@ node .agents\skills\browser-check\preflight.mjs
 node .agents\skills\browser-check\dev-server.mjs start
 node .agents\skills\browser-check\shot.mjs / --wait "#app"
 ```
+
+## 認証が必要な画面
+
+Repository rootの`.password`は、このprojectの実Browser確認専用で、1行目が閲覧用password、2行目が管理者用passwordである。ユーザーが認証済み画面のBrowser確認を明示的に依頼・許可した場合だけ使用する。
+
+- 一時的なNode scriptがfileをprocess内で直接読み、passwordをcommand line引数や環境変数へ入れない。
+- 値、文字数、hash、入力後のDOM valueを標準出力、log、screenshot、作業記録へ出さない。
+- AWS、Git、Frontend bundle、localStorageへ保存しない。認証formへの入力以外に送信しない。
+- 2行が揃わない場合は推測せず、認証確認を停止する。
+- Chromiumは認証確認でも`finally`で必ず閉じる。
 
 レスポンシブ確認の例:
 

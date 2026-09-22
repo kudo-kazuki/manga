@@ -42,10 +42,14 @@ export function createStorage(
         autoDeleteObjects: false,
         removalPolicy: RemovalPolicy.RETAIN,
         // Presigned PUTだけはBrowserからS3へ直接送るため、PUTとContent-Typeだけを許可する。
-        // OriginはCloudFormation Parameterで明示し、'*'は使用しない。
+        // 本番OriginはCloudFormation Parameterで明示し、'*'は使用しない。
+        // Viteの開発serverからも同じ実AWSへE2E確認できるようlocalhostだけを追加許可する。
         cors: [
             {
-                allowedOrigins: [uploadAllowedOrigin],
+                allowedOrigins: [
+                    uploadAllowedOrigin,
+                    'http://localhost:4646',
+                ],
                 allowedMethods: [s3.HttpMethods.PUT],
                 allowedHeaders: ['content-type', 'cache-control'],
                 maxAge: 900,

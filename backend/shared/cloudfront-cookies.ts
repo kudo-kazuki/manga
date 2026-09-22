@@ -39,7 +39,7 @@ export function createSignedCookies(input: SignedCookieInput): string[] {
 
     // JavaScriptからCookie値を読ませず、HTTPSかつ同一サイト用途に限定する。
     // Domainを付けないため、実際にログインしたhostだけで有効なhost-only Cookieになる。
-    const attributes = 'Path=/; Secure; HttpOnly; SameSite=Lax'
+    const attributes = `Path=/; Secure; HttpOnly; SameSite=Lax; Expires=${new Date(input.expiresAtEpochSeconds * 1000).toUTCString()}`
     return [
         `${SIGNED_COOKIE_NAMES[0]}=${cloudFrontBase64(policy)}; ${attributes}`,
         `${SIGNED_COOKIE_NAMES[1]}=${cloudFrontBase64(signer.sign(input.privateKey))}; ${attributes}`,

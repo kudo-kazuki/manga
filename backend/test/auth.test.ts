@@ -94,6 +94,11 @@ describe('viewer authentication', () => {
         expect(
             response.cookies?.every((cookie) => cookie.includes('HttpOnly')),
         ).toBe(true)
+        expect(
+            response.cookies?.every((cookie) =>
+                cookie.includes('Expires=Fri, 15 Jan 2027 09:00:00 GMT'),
+            ),
+        ).toBe(true)
     })
 
     it('誤ったpasswordを詳細なしの401にする', async () => {
@@ -170,6 +175,7 @@ describe('admin authentication', () => {
         expect(verifyAdminSession(cookieValue, signingKey, 1_800_000_100)).toBe(
             true,
         )
+        expect(cookieHeader).toContain('Expires=Fri, 15 Jan 2027 08:30:00 GMT')
     })
 
     it('改ざん、期限切れ、異なる署名鍵を拒否する', async () => {

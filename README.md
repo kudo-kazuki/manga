@@ -57,10 +57,14 @@ Frontendだけを起動する場合:
 
 ```powershell
 cd D:\manga\frontend
+Copy-Item .env.local.example .env.local
+# .env.localのMANGA_DEV_PROXY_TARGETを、CDK outputのSiteUrlへ置き換える。
 & 'C:\Program Files\nodejs\npm.cmd' run dev
 ```
 
-`http://localhost:4646`で画面を確認できます。Local serverにはLambda/API/S3のemulatorを含まないため、ログイン・Presign・private metadata取得のE2E確認はdeploy後に行います。
+`http://localhost:4646`で画面を確認できます。`.env.local`が設定されている場合、Viteは`/api/*`と`/manga/*`だけをdeploy済みCloudFrontへproxyするため、local画面からログイン・閲覧・管理uploadも確認できます。PasswordやAWS credentialはFrontendへ保存しません。
+
+Presigned PUTはBrowserからS3へ直接送るため、Manga BucketのCORSではdeploy済みCloudFront originに加えて`http://localhost:4646`だけを許可します。任意originを許可する`*`は使用しません。`.env.local`は環境固有値なのでGit無視対象です。
 
 全local検証:
 
@@ -188,7 +192,7 @@ aws ssm put-parameter `
     --overwrite
 ```
 
-再登録後も、発行済みCookieはそれぞれの有効期限まで利用できる。閲覧Cookieは最大24時間、管理Cookieは最大1時間である。即時に全sessionを失効させる必要がある場合だけ、passwordとは別に対応する署名鍵のrotationを行う。
+再登録後も、発行済みCookieはそれぞれの有効期限まで利用できる。閲覧Cookieと管理Cookieはどちらも最大30日である。即時に全sessionを失効させる必要がある場合だけ、passwordとは別に対応する署名鍵のrotationを行う。
 
 Lambdaが旧SSM値を一時cacheしている間は、新しいpasswordの反映に時間がかかる場合がある。平文passwordはAWSにもlocal fileにも保存されないため、後から確認する場合はpassword managerを正本とする。
 
@@ -245,6 +249,14 @@ $publicKeyPem = Get-Content -LiteralPath ..\secrets\cloudfront-public.pem -Raw
 7. 全画像成功後、BackendがS3上の画像を再確認して`metadata.json`と`index.json`を確定する。
 8. 「作品ページを開く」から閲覧を確認する。閲覧用passwordでのログインは管理認証とは別に必要。
 
+## 漫画削除
+
+1. 管理画面の「作品削除」から`SiteUrl/admin/delete`を開く。
+2. 一覧から削除する作品を選び、確認modalに表示された作品名を再確認する。
+3. 「削除する」を押す。処理中はボタンが無効になり、連打しても重複実行されない。
+
+削除すると対象作品の画像とmetadata、公開一覧の登録が消え、CloudFront cacheも無効化される。S3 Versioningは無効のため復元できない。元画像または別backupがあることを確認してから実行する。
+
 Folder構造:
 
 ```text
@@ -300,10 +312,10 @@ cd D:\manga\infra
 ## Security
 
 - S3 Public Access Block、S3 managed encryption、HTTPS強制、CloudFront OACを使用。
-- `/manga/*`はTrusted Key Groupと24時間のSigned Cookieで保護。
-- 管理側は別passwordと1時間のHttpOnly HMAC Cookieを使用。
+- `/manga/*`はTrusted Key Groupと30日のSigned Cookieで保護。
+- 管理側は別passwordと30日のHttpOnly HMAC Cookieを使用。
 - Presigned PUTは15分、`image/webp`、検証済み`manga/{work}/{chapter}/{page}`だけ。
-- Complete Lambdaは画像を上書き・削除できず、metadata/indexだけを書ける。
+- Complete Lambdaは画像を上書き・削除できず、metadata/indexだけを書ける。削除専用Lambdaだけが検証済み作品prefixを削除できる。
 - APIはCloudFront経由の同一originで使い、S3 CORSは指定originのPUTと必要headerだけ。
 - Lambda source map、S3/CloudFront access log、Frontend source mapは無効。
 - Lambda logは7日保持し、secretやPresigned URLを出力しない。

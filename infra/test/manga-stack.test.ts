@@ -71,7 +71,10 @@ describe('MangaStack', () => {
                     {
                         AllowedHeaders: ['content-type', 'cache-control'],
                         AllowedMethods: ['PUT'],
-                        AllowedOrigins: [{ Ref: 'UploadAllowedOrigin' }],
+                        AllowedOrigins: [
+                            { Ref: 'UploadAllowedOrigin' },
+                            'http://localhost:4646',
+                        ],
                         MaxAge: 900,
                     },
                 ],
@@ -147,7 +150,7 @@ describe('MangaStack', () => {
 
     it('HTTP APIとcache無効の/api/* Behaviorを作成する', () => {
         template.resourceCountIs('AWS::ApiGatewayV2::Api', 1)
-        template.resourceCountIs('AWS::ApiGatewayV2::Route', 7)
+        template.resourceCountIs('AWS::ApiGatewayV2::Route', 9)
         template.hasResourceProperties('AWS::ApiGatewayV2::Stage', {
             DefaultRouteSettings: {
                 ThrottlingBurstLimit: 10,
@@ -192,6 +195,32 @@ describe('MangaStack', () => {
                     definition.includes('manga/*'),
             ),
         ).toBe(true)
+        expect(
+            policyDefinitions.some(
+                (definition) =>
+                    definition.includes('s3:DeleteObject') &&
+                    definition.includes('manga/*'),
+            ),
+        ).toBe(true)
+        expect(
+            policyDefinitions.some((definition) =>
+                definition.includes('cloudfront:CreateInvalidation'),
+            ),
+        ).toBe(true)
+        template.hasResourceProperties('AWS::Lambda::Function', {
+            Environment: {
+                Variables: Match.objectLike({
+                    SIGNED_COOKIE_TTL_SECONDS: '2592000',
+                }),
+            },
+        })
+        template.hasResourceProperties('AWS::Lambda::Function', {
+            Environment: {
+                Variables: Match.objectLike({
+                    ADMIN_SESSION_TTL_SECONDS: '2592000',
+                }),
+            },
+        })
         expect(
             policyDefinitions.some(
                 (definition) =>

@@ -17,6 +17,7 @@ cdk.out
 .env.develop
 .env.localtest
 .env.production
+/frontend/.env.local
 scripts/ftp.deploy.json
 src/config/auth.local.json
 
@@ -30,6 +31,9 @@ src/config/auth.local.json
 /infra/.env
 /infra/.env.*
 /secrets/
+
+# 大容量アップロード・削除テスト用データ
+/sample/large-upload-delete-test/
 
 # Private story idea notes
 /story-ideas/

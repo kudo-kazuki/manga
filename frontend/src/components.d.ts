@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     Button: typeof import('./components/Button.vue')['default']
     CheckBox: typeof import('./components/CheckBox.vue')['default']
+    ElDialog: typeof import('element-plus/es')['ElDialog']
     ElInput: typeof import('element-plus/es')['ElInput']
     ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
     Loading: typeof import('./components/Loading.vue')['default']

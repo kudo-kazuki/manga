@@ -218,7 +218,10 @@ const retryFinalize = async () => {
                 <p>ADMIN</p>
                 <h1>漫画アップロード</h1>
             </div>
-            <button type="button" @click="logout">管理ログアウト</button>
+            <div class="AdminPage__headerActions">
+                <router-link to="/admin/delete">作品削除</router-link>
+                <button type="button" @click="logout">管理ログアウト</button>
+            </div>
         </header>
 
         <section
@@ -383,7 +386,6 @@ const retryFinalize = async () => {
     }
 
     &__header,
-    &__header > div,
     &__preview,
     &__quality {
         display: grid;
@@ -400,6 +402,17 @@ const retryFinalize = async () => {
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.16em;
+    }
+
+    &__headerActions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        a {
+            color: #314a78;
+            font-size: 13px;
+        }
     }
 
     &__header button,

@@ -52,7 +52,7 @@
 
 - [ ] AWS accountとregionをcontextまたは環境変数から解決する。
 - [ ] 標準regionは `ap-northeast-1` とする。
-- [ ] Signed Cookie有効期限の初期値を24時間とする。
+- [x] Signed Cookieと管理sessionの初期有効期限を30日とし、永続Cookieにする。
 - [ ] Presigned URL有効期限の初期値を15分とする。
 - [ ] Presign batch sizeの初期値を100件とする。
 - [ ] Upload concurrencyの初期値を5程度とする。
@@ -273,6 +273,15 @@
 - [x] 保存先を `manga/{workId}/{chapterId}/{page}.webp` に限定する。
 - [x] content typeを `image/webp` に限定する。
 
+### 4.7 作品一覧・削除API
+
+- [x] 管理認証必須の作品一覧APIを実装する。
+- [x] 検証済み`workId`のprefixだけを作品単位で削除する。
+- [x] S3 paginationと1,000件単位の一括削除に対応する。
+- [x] ETag条件付き更新と競合再試行で公開indexから作品を除外する。
+- [x] 作品画像と公開indexのCloudFront cacheを無効化する。
+- [x] 同じ削除要求を安全に再試行できるよう冪等にする。
+
 テスト:
 
 - [x] path traversal相当入力を拒否する。
@@ -378,6 +387,14 @@
 - [x] 50 chapter × 200 imagesを解析できる。
 - [x] folder hierarchyを保持できる。
 - [x] 無関係ファイルを適切に扱える。
+
+### 5.6 作品削除画面
+
+- [x] Upload画面と分離した`/admin/delete`を実装する。
+- [x] 公開中の作品一覧と削除操作を表示する。
+- [x] 作品名と不可逆性を示す確認modalを表示する。
+- [x] 削除処理中のbutton無効化とhandler guardで二重送信を防ぐ。
+- [x] 管理session切れでは管理loginへ戻す。
 - [x] 巨大入力でも画像decodeを開始しない段階ではメモリが急増しない。
 
 ### 5.6 Natural Sortと正規化
@@ -488,9 +505,9 @@
 ## 6. セキュリティ確認
 
 - [x] S3 Public Accessが完全に無効である。
-- [ ] S3 direct URLが403になる。
-- [ ] 未ログインの `/manga/*` が403になる。
-- [ ] ログイン後だけ `/manga/*` が200になる。
+- [x] S3 direct URLが403になる。
+- [x] 未ログインの `/manga/*` が403になる。
+- [x] ログイン後だけ `/manga/*` が200になる。
 - [ ] Signed Cookie期限切れ後に403へ戻る。
 - [x] 未認証でPresign URLを取得できない。
 - [x] 閲覧Cookieだけでは管理APIを呼べない。
@@ -530,6 +547,7 @@
 - [x] CDK deploy手順を記載する。
 - [x] 初回CORS設定手順を記載する。
 - [x] 漫画folder upload手順を記載する。
+- [x] 作品削除手順と復元できない旨を記載する。
 - [x] 独自ドメインなしのアクセスURL確認方法を記載する。
 - [x] 任意の独自ドメイン追加手順を記載する。
 - [x] XSERVERからRoute 53へのNS委任手順を記載する。
@@ -541,18 +559,18 @@
 
 ### Phase 1: CDK / S3 / CloudFront / SPA
 
-- [ ] CloudFront標準URLでSPAを表示できる。
-- [ ] SPA routeを直接開ける。
-- [ ] SPA BucketをS3 URLで直接閲覧できない。
-- [ ] 禁止された固定料金リソースがない。
+- [x] CloudFront標準URLでSPAを表示できる。
+- [x] SPA routeを直接開ける。
+- [x] SPA BucketをS3 URLで直接閲覧できない。
+- [x] 禁止された固定料金リソースがない。
 
 ### Phase 2: Signed Cookie / Login
 
-- [ ] 未ログインの `/manga/test.webp` が403になる。
-- [ ] 正しい共通passwordでログインできる。
-- [ ] ログイン後の `/manga/test.webp` が200になる。
+- [x] 未ログインの `/manga/*` 画像が403になる。
+- [x] 正しい共通passwordでログインできる。
+- [x] ログイン後のsample画像が200になる。
 - [ ] Cookie期限切れ後に403になる。
-- [ ] 漫画BucketのS3 URLは常に403になる。
+- [x] 漫画BucketのS3 URLは常に403になる。
 
 ### Phase 3: Admin / D&D / Natural Sort / WebP
 
@@ -566,16 +584,16 @@
 
 - [ ] 未認証でPresignを取得できない。
 - [ ] 画像binaryがLambdaを通らない。
-- [ ] BrowserからS3へ直接PUTできる。
+- [x] BrowserからS3へ直接PUTできる。
 - [ ] progressが表示される。
 - [ ] Pause、Resume、Retry failed filesが動作する。
 
 ### Phase 5: metadata / 一覧 / Viewer
 
-- [ ] 全画像成功後だけmetadataが公開される。
-- [ ] 作品一覧を表示できる。
-- [ ] chapter一覧を表示できる。
-- [ ] Viewerで漫画を読める。
+- [x] 全画像成功後だけmetadataが公開される。
+- [x] 作品一覧を表示できる。
+- [x] chapter一覧を表示できる。
+- [x] Viewerで漫画を読める。
 - [ ] 前後chapterへ移動できる。
 - [ ] Lazy LoadでBrowser負荷を抑えられる。
 

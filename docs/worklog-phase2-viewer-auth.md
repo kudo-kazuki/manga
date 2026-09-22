@@ -45,7 +45,7 @@ CloudFront-Signature
 CloudFront-Key-Pair-Id
 ```
 
-Cookie属性は `Secure; HttpOnly; SameSite=Lax; Path=/`、標準有効期限は24時間である。ポリシーのResourceは、CloudFront viewer requestで取得したhostの `/manga/*` だけに限定する。
+Cookie属性は `Secure; HttpOnly; SameSite=Lax; Path=/`。実装当初は24時間だったが、2026-09-22に永続Cookieの30日へ変更した。ポリシーのResourceは、CloudFront viewer requestで取得したhostの `/manga/*` だけに限定する。
 
 ## 3. CloudFrontとAPI
 

@@ -7,6 +7,21 @@ import type {
 } from './types'
 
 const IMAGE_EXTENSION = /\.(?:jpe?g|png)$/i
+const IMAGE_MIME_TYPE = /^image\/(?:jpeg|png)$/i
+const SYSTEM_FILE_NAMES = new Set(['.ds_store', 'desktop.ini', 'thumbs.db'])
+
+function isSystemArtifact(segments: readonly string[]): boolean {
+    return segments.some((segment) => {
+        const lower = segment.toLowerCase()
+        // macOSのAppleDouble（._*.jpgを含む）やmetadata directoryを画像として数えない。
+        // WindowsのExplorerが作るdesktop.ini / Thumbs.dbも同様に除外する。
+        return (
+            segment.startsWith('.') ||
+            lower === '__macosx' ||
+            SYSTEM_FILE_NAMES.has(lower)
+        )
+    })
+}
 
 interface LegacyFileEntry {
     readonly isFile: true
@@ -74,6 +89,12 @@ export function parseWorkFiles(
 
     for (const source of files) {
         const segments = source.relativePath.replaceAll('\\', '/').split('/')
+        if (isSystemArtifact(segments)) {
+            warnings.push(
+                `OSが作成した不要ファイルを除外しました: ${source.relativePath}`,
+            )
+            continue
+        }
         if (segments.length !== 3 || segments.some((segment) => !segment)) {
             warnings.push(`想定外の階層を除外しました: ${source.relativePath}`)
             continue
@@ -88,6 +109,12 @@ export function parseWorkFiles(
             throw new Error('複数の作品フォルダが含まれています。')
         }
         if (!IMAGE_EXTENSION.test(fileName)) {
+            warnings.push(`JPEG/PNG以外を除外しました: ${source.relativePath}`)
+            continue
+        }
+        // 拡張子だけを画像に偽装した明らかな非画像fileもpage数へ含めない。
+        // BrowserがMIME typeを返さない環境では、JPEG/PNG拡張子をfallbackとして許可する。
+        if (source.file.type && !IMAGE_MIME_TYPE.test(source.file.type)) {
             warnings.push(`JPEG/PNG以外を除外しました: ${source.relativePath}`)
             continue
         }

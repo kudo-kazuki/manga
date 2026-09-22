@@ -51,33 +51,33 @@
 
 ### 3. Secretとbootstrap
 
-- [ ] Secret 5 fileをlocal生成済みか確認（内容は表示しない）
-- [ ] SSM SecureString 4件を登録済みか確認
+- [x] Secret 5 fileをlocal生成済みか確認（内容は表示しない）
+- [x] SSM SecureString 4件を登録済みか確認
 - [x] CDK bootstrapが必要な場合だけ実行
 
 ### 4. 初回deploy
 
-- [ ] CloudFront Public Keyをparameterとして初回deploy
-- [ ] CloudFormation Stack statusを確認
-- [ ] `SiteUrl`、`DistributionId`、Bucket名を記録
-- [ ] 漫画Bucketが新規か既存かを記録
+- [x] CloudFront Public Keyをparameterとして初回deploy
+- [x] CloudFormation Stack statusを確認
+- [x] `SiteUrl`、`DistributionId`、Bucket名を記録
+- [x] 漫画Bucketが新規か既存かを記録
 
 ### 5. CORS限定deploy
 
-- [ ] `UploadAllowedOrigin=SiteUrl` で2回目deploy
-- [ ] diffに想定外の削除・置換がないことを確認
-- [ ] Stack statusを確認
+- [x] `UploadAllowedOrigin=SiteUrl` で2回目deploy
+- [x] diffに想定外の削除・置換がないことを確認
+- [x] Stack statusを確認
 
 ### 6. 実AWS / Browser E2E
 
-- [ ] CloudFront標準URLでSPAを表示
-- [ ] 未認証 `/manga/*` が403
-- [ ] 閲覧ログインとprivate metadata取得
-- [ ] 管理ログイン
-- [ ] 小さなテスト作品をPresigned PUTでupload
-- [ ] metadata/index確定とViewer表示
-- [ ] S3 direct URLが403
-- [ ] Browser console errorと主要画面を確認
+- [x] CloudFront標準URLでSPAを表示
+- [x] 未認証 `/manga/*` が403
+- [x] 閲覧ログインとprivate metadata取得
+- [x] 管理ログイン
+- [x] 小さなテスト作品をPresigned PUTでupload
+- [x] metadata/index確定とViewer表示
+- [x] S3 direct URLが403
+- [x] Browser console errorと主要画面を確認
 - [ ] CloudWatch Logsにsecret・Cookie・Presigned URLがないことを確認
 
 ## 実行ログ
@@ -141,6 +141,161 @@
 - 平文passwordは保存せず、password managerを正本とする。
 - passwordを忘れた場合は、漫画データや鍵を変更せず、対象password hashのSSM Parameterだけを再登録できる。
 - 単独のpassword再登録手順をREADMEへ追加した。
+
+### 2026-09-22 10:35 JST — Secret検証とSSM登録
+
+- localの5 fileが存在し、Git無視対象であることを確認。
+- viewer/adminのscrypt hash形式、別hashであること、管理HMAC鍵形式を確認。
+- Node.js cryptoでCloudFront秘密鍵をparseし、導出した公開鍵と保存済み公開鍵が一致することを確認。
+- 次の4件をSSM Parameter Storeへ `SecureString` / `Standard` / version 1として新規登録。`Overwrite: false`を使用した。
+  - `/manga/viewer-password-hash`
+  - `/manga/admin-password-hash`
+  - `/manga/admin-signing-key`
+  - `/manga/cloudfront-private-key`
+- Parameterの値はterminalや作業記録へ出力していない。
+- Secrets Managerは使用していない。
+
+次の作業: CloudFront公開鍵をparameterとして初回 `MangaStack` deploy。
+
+### 2026-09-22 10:39 JST — 初回deployの起動方法を修正
+
+- `npm run deploy -- --parameters ... --require-approval never` を試したが、npm scriptからCDKへ承認optionが正しく渡らず、security-sensitive変更の確認待ちで停止した。
+- CloudFormationのchange set実行前に停止しており、`MangaStack` のapp resourceはまだ作成されていない。CDK bootstrap Bucketへbuild assetがpublishされたのみ。
+- npmの表示では複数行の公開鍵parameterが先頭行だけに見えたため、`.cmd` / npmを経由せず、Node.jsからlocalのCDK CLIを直接起動して再試行する。
+- 公開鍵は公開情報だが、以後もterminalへ全文を表示しない。
+
+次の作業: parameterが単一引数として渡ることをlocal確認し、CDK CLI直接起動で初回deployを再実行する。
+
+### 2026-09-22 10:46 JST — 初回deploy成功
+
+- 公開鍵parameterが改行を含む単一引数として渡ることを、値を表示せずlocal確認した。
+- 最初の直接起動はlocal `cdk.out` のlock file作成権限エラーでAWS接続前に停止。権限付きで同じcommandを再実行した。
+- `MangaStack` の初回deployが成功。CDK終了code 0、deployment time 252.5秒。
+- Stack ARN: `arn:aws:cloudformation:ap-northeast-1:702347290971:stack/MangaStack/191bf3e0-b62a-11f1-ab2c-0e08a3827279`
+- `SiteUrl`: `https://d26x2l9tcghr7u.cloudfront.net`
+- `DistributionId`: `EN6UHWSB7J97W`
+- `ApiEndpoint`: `https://73inf7qze0.execute-api.ap-northeast-1.amazonaws.com`
+- `FrontendBucketName`: `mangastack-frontendbucketefe2e19c-bgshvibxa8sk`
+- `MangaBucketName`: `mangastack-mangabucket00f24a3b-tivf8slgfz76`
+
+次の作業: Bucket状態をread-only確認し、`UploadAllowedOrigin=SiteUrl` の2回目deployを行う。
+
+### 2026-09-22 10:47 JST — Bucket状態確認
+
+- Frontend Bucketはdeployment済みの23 object。全件を数えられ、truncatedではない。
+- Manga Bucketは0 object。今回新規作成された空Bucketであり、既存漫画コンテンツの移動・削除・上書きはない。
+
+次の作業: `UploadAllowedOrigin=https://d26x2l9tcghr7u.cloudfront.net` を指定したdiffを確認し、2回目deployを行う。
+
+### 2026-09-22 10:49 JST — CORS更新前diff
+
+- 使用中のCDK版では `diff` commandの `--parameters` は未対応で、optionは無視された。
+- 現在deploy済みtemplateとlocal templateの差分は0件。削除・置換を伴うsource変更はない。
+- `UploadAllowedOrigin` はCloudFormation parameter値だけの更新なのでtemplate diffには現れない。
+- 2回目deployでは既定の `previous-parameters=true` を維持し、`UploadAllowedOrigin` だけを明示する。これにより初回の `CloudFrontPublicKeyPem` は既存値を保持する。
+
+次の作業: CORS parameterだけを指定して2回目deployする。
+
+### 2026-09-22 11:15 JST — CORS限定deploy成功
+
+- `UploadAllowedOrigin=https://d26x2l9tcghr7u.cloudfront.net` だけを明示し、既存の公開鍵parameterは保持して更新した。
+- CloudFormation eventで更新対象が `AWS::S3::Bucket MangaBucket` 1件だけであることを確認。
+- Manga Bucketはin-placeで `UPDATE_COMPLETE`。削除・置換・再作成なし。
+- Stackは `UPDATE_COMPLETE`、CDK終了code 0。outputsとStack ARNは初回から不変。
+
+次の作業: 実際のBucket CORS値をread-only確認し、HTTP / 実browser動作確認へ進む。
+
+### 2026-09-22 11:17 JST — CORS / HTTP確認
+
+- Manga Bucketの実CORS設定をread-only取得し、次を確認。
+  - Allowed origin: `https://d26x2l9tcghr7u.cloudfront.net` だけ
+  - Allowed method: `PUT` だけ
+  - Allowed headers: `content-type`, `cache-control`
+  - Max age: 900秒
+- HTTP status:
+  - CloudFront `/`: 200
+  - CloudFront `/login`: 200
+  - CloudFront `/admin/login`: 200
+  - 未認証CloudFront `/manga/index.json`: 403
+  - Manga Bucket direct URL: 403
+- S3 CORS preflight:
+  - CloudFront origin: 200、`PUT` と必要headerだけを許可
+  - `https://example.invalid`: 403、CORS response headerなし
+- 実objectのPUTは行っておらず、漫画Bucket内容は変更していない。
+
+### 2026-09-22 11:19 JST — 実Chromium / 認証拒否確認
+
+- `browser-check` skillでCloudFrontを直接開き、確認ごとにChromiumを終了した。local dev serverは起動していない。
+- `/login` と `/admin/login` は崩れなく描画され、JavaScript例外なし。
+- 未認証 `/` は `/manga/index.json` の想定内403後、`/login?redirect=/` へ遷移した。
+- 未認証 `/admin` はsession APIの想定内401後、`/admin/login` へ遷移した。
+- 最初のroot screenshotは通信完了前の「読み込み中」だったため、4秒待って遷移完了を再確認した。実装不具合ではない。
+- 固定の無効passwordでviewer/admin login APIを各1回だけ確認し、両方401 `INVALID_CREDENTIALS`。LambdaとSSM hash参照は正常。
+- 最初のcurl試行はWindows引数処理でJSONが崩れて400になったため、Node.js `fetch` + `JSON.stringify` で正しいrequestを再確認した。
+- screenshotはOS一時directoryにだけ保存し、repositoryには追加していない。
+- 本番passwordは平文保存しておらず、こちらから参照できないため、成功login・Presigned PUT・Viewer表示は利用者によるlogin確認が必要。
+- Backendのlogging箇所も再確認し、内部error時も固定messageだけでpassword、SSM値、Cookie、Presigned URLを出力しない実装になっている。CloudWatch実ログのread-only確認は未実施。
+
+次の作業: 利用者がviewer/admin passwordで成功loginを確認し、必要なら小さなテスト作品1件だけでupload E2Eを行う。その後CloudWatch実ログを確認する。
+
+### 2026-09-22 15:37 JST — 初回upload失敗の調査と修正
+
+- 利用者がviewer/adminの両login成功を確認した後、localhost管理画面からsample uploadに失敗したと報告。
+- `sample/sample1` の実fileを確認すると、各chapterに `1.jpg`〜`5.jpg`だけでなく `2 - コピー (3).jpg` も存在し、JPEGは実際に各6枚だった。このcopy画像は隠しfileではなく、正規画像と区別不能なため自動除外しない。
+- Parserは元からJPEG/PNG以外の拡張子を除外していたが、次も明示的に除外するよう強化した。
+  - dot file / dot directory
+  - macOS `.DS_Store`、AppleDouble `._*.jpg`、`__MACOSX`
+  - Windows `Thumbs.db`、`desktop.ini`
+  - JPEG/PNG拡張子でもBrowserのMIME typeが非画像のfile
+- 上記を検証するunit testを追加。Frontendは35 tests成功。
+- header brandを`Novels`から`漫画`へ変更。
+- localhostから実AWSを使えるよう、Viteで`/api/*`と`/manga/*`を`.env.local`指定のCloudFrontへproxyする構成を追加。
+- `.env.local`はGit無視対象。公開URLだけを保存し、passwordやAWS credentialは保存しない。
+- Manga Bucket CORSに本番CloudFront originと並べて`http://localhost:4646`を完全一致で追加。`*`は不使用。
+- synthとdiffで、変更がManga BucketのCORS in-place更新とFrontend asset更新だけで、削除・置換がないことを確認。
+
+### 2026-09-22 15:44 JST — 修正deployと実Browser E2E成功
+
+- `MangaStack`更新成功、`UPDATE_COMPLETE`。Manga Bucketの削除・置換なし。
+- `.password`は利用者の許可どおり1行目をviewer、2行目をadminとしてprocess内でだけ使用し、値は出力・記録していない。
+- 本番CloudFrontでviewer/admin login成功。
+- `http://localhost:4646`でもVite proxy経由のviewer/admin login成功。
+- 失敗upload後のManga Bucketは0 objectで、partial uploadの残骸がないことを確認。
+- 元sampleは変更せず、各chapterの`1.jpg`〜`5.jpg`だけをOS一時directoryへ複製し、4 chapters × 5 pagesの`sample1`をlocalhost管理画面からuploadした。
+- Previewは4 chapters / 20 images / 各5 pages。20件すべてPresigned PUT成功後、metadataとindex確定成功。
+- localhost Viewerで4 chapters / 各5 pages、chapter 1の画像5枚、表示errorなしを確認。
+- 本番CloudFrontでも作品一覧、metadata、chapter 1の画像5枚を確認。headerは`漫画`。
+- 最終S3状態は22 object（WebP 20、metadata 1、index 1）。実CORS originは本番CloudFrontとlocalhostの2件、methodはPUTだけ。
+- browser-checkが起動したものではない既存dev serverを使用したため、指示どおり停止していない。各Chromiumは`finally`で終了した。
+
+残件: CloudWatch実ログのread-only確認と、Signed Cookie期限切れの時間経過E2E。通常利用に必要なlogin・upload・閲覧経路は本番とlocalhostで確認済み。
+
+### 2026-09-22 16:45 JST — 作品削除・30日sessionのdeploy前実装
+
+- Uploadとは別の`/admin/delete`画面、管理認証付き作品一覧API、作品単位の削除APIを追加した。
+- 削除前に作品名と不可逆性を示す確認modalを表示し、処理中は画面側のbutton無効化とhandler guardの両方で二重送信を防ぐ。
+- Backendは検証済み`workId`のprefixだけをpagination付きで列挙し、最大1,000 objectずつ削除する。公開indexはETag条件付き更新と競合再試行で安全に更新する。
+- 長期cache済み画像を削除後も閲覧できてしまわないよう、対象作品と`index.json`のCloudFront invalidationを追加した。再試行できるよう、存在しない有効な作品IDの削除も成功扱いにした。
+- Viewer Signed Cookieと管理sessionを30日に変更し、Browser終了後も保持される`Expires`属性を追加した。Logoutでは従来どおり削除される。
+- `.password`の2行構成と秘匿上の注意を`browser-check` skillへ追記し、skill validatorで正常性を確認した。
+- deploy前checkはBackend 40 tests、Frontend 38 tests、Infra 5 testsが成功。各typecheckとFrontend lintも成功した。
+
+次の作業: `cdk synth`と`cdk diff`で既存resourceの削除・置換がないことを確認し、deployする。その後、`sample1`を削除せず専用の一時作品だけで削除modal・二重送信防止・S3/index削除を実Browser確認する。
+
+### 2026-09-22 16:50 JST — 作品削除・30日sessionのdeploy完了
+
+- `kudo-admin`がaccount `702347290971`のIAM userであることを再確認した。
+- `cdk synth`成功。`cdk diff`は新規AdminWorks Lambda/API/IAM、既存認証LambdaのTTL/code、Frontend assetだけの差分で、Manga Bucketや既存resourceの削除・置換は0件だった。
+- `MangaStack`を更新し、16:49 JSTに`UPDATE_COMPLETE`。Manga Bucketの更新eventはなく、名前・Distribution・outputsも不変。
+- `.password`はskill記載どおりprocess内でだけ読み、値・長さ・hashを出力せず、Chromiumは`finally`で終了した。
+- 本番CloudFrontでviewer loginとadmin loginに成功し、閲覧Cookie 3個と管理session Cookieがいずれも約30日の`Expires`を持つことを実Browser確認した。
+- 削除E2E専用の一時作品`delete-e2e-mucdn7fa-1a7ij2f`を1画像だけuploadした。`sample1`は操作対象にしていない。
+- `/admin/delete`で作品一覧、作品名と不可逆性を示す確認modalを確認。確認buttonを同期的に2回押してもDELETE requestは1回だけだった。
+- 削除APIは200を返し、一時作品は画面一覧から消えた。CloudFront invalidation requestが受理されてから成功を返す経路も通過した。
+- AWS SDKで最終状態をread-only確認し、一時作品prefix 0 object、`sample1` prefix 21 object、`manga/`全体22 objectだった。公開indexは一時作品なし・`sample1`あり。
+- screenshotはOS一時directoryだけに保存し、repositoryには含めていない。既存dev serverは`theirs`判定のため停止していない。
+
+作品削除・30日sessionのdeployと本番E2Eは完了。既存コンテンツの損失なし。
 
 ## 中断時の再開手順
 

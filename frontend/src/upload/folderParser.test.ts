@@ -3,10 +3,14 @@ import { naturalSort } from '@/utils/naturalSort'
 import { createWorkId, parseWorkFiles } from './folderParser'
 import type { RelativeImageFile } from './types'
 
-function source(path: string, size = 100): RelativeImageFile {
+function source(
+    path: string,
+    size = 100,
+    type = 'image/jpeg',
+): RelativeImageFile {
     const name = path.split('/').at(-1) ?? path
     return {
-        file: new File([new Uint8Array(size)], name, { type: 'image/jpeg' }),
+        file: new File([new Uint8Array(size)], name, { type }),
         relativePath: path,
     }
 }
@@ -49,6 +53,33 @@ describe('folder parser', () => {
         ])
         expect(work.totalImages).toBe(1)
         expect(work.warnings).toHaveLength(2)
+    })
+
+    it('Windows/macOSのsystem fileとAppleDouble画像をpage数へ含めない', () => {
+        const work = parseWorkFiles([
+            source('作品/1巻/1.jpg'),
+            source('作品/1巻/.DS_Store', 1, 'application/octet-stream'),
+            source('作品/1巻/Thumbs.db', 1, 'application/octet-stream'),
+            source('作品/1巻/desktop.ini', 1, 'text/plain'),
+            source('作品/1巻/._2.jpg'),
+            source('作品/__MACOSX/2.jpg'),
+        ])
+
+        expect(work.totalImages).toBe(1)
+        expect(work.chapters).toHaveLength(1)
+        expect(work.warnings).toHaveLength(5)
+    })
+
+    it('画像拡張子でもMIME typeが非画像なら除外する', () => {
+        const work = parseWorkFiles([
+            source('作品/1巻/1.jpg'),
+            source('作品/1巻/not-image.jpg', 1, 'text/plain'),
+        ])
+
+        expect(work.totalImages).toBe(1)
+        expect(work.warnings).toEqual([
+            'JPEG/PNG以外を除外しました: 作品/1巻/not-image.jpg',
+        ])
     })
 
     it('50 chapter × 200 imagesをdecodeせず解析できる', () => {

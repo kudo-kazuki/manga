@@ -48,6 +48,10 @@ function parseId(value: unknown, fieldName: string): string {
     return value
 }
 
+export function parseWorkId(value: unknown): string {
+    return parseId(value, 'workId')
+}
+
 function parseTitle(value: unknown, fieldName: string): string {
     if (typeof value !== 'string') {
         throw new RequestValidationError(`${fieldName} is invalid`)
@@ -80,7 +84,7 @@ export function parseCompleteUploadRequest(
         throw new RequestValidationError('Request body is invalid')
     }
 
-    const workId = parseId(parsed.workId, 'workId')
+    const workId = parseWorkId(parsed.workId)
     const title = parseTitle(parsed.title, 'title')
     if (
         !Array.isArray(parsed.chapters) ||
@@ -163,6 +167,13 @@ export function updateIndex(
     works.push(entry)
     works.sort((left, right) => left.id.localeCompare(right.id, 'en'))
     return { works }
+}
+
+export function removeFromIndex(
+    current: MangaIndex,
+    workId: string,
+): MangaIndex {
+    return { works: current.works.filter((work) => work.id !== workId) }
 }
 
 export function parseMangaIndex(body: string): MangaIndex {

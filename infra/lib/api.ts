@@ -28,6 +28,7 @@ export interface MangaApiProps {
 
 export interface MangaApiResources {
     readonly httpApi: apigatewayv2.HttpApi
+    readonly adminWorksFunction: lambdaNodejs.NodejsFunction
 }
 
 function parameterArn(scope: Construct, parameterName: string): string {
@@ -198,6 +199,47 @@ export function createMangaApi(
             ],
         }),
     )
+
+    const adminWorksFunction = createFunction(
+        scope,
+        'AdminWorksFunction',
+        path.join(backendRoot, 'functions/admin-works.ts'),
+        {
+            MANGA_BUCKET_NAME: props.mangaBucket.bucketName,
+            ADMIN_SIGNING_KEY_PARAMETER_NAME:
+                props.adminSigningKeyParameterName,
+        },
+        // 最大10万画像の作品削除ではpaginationと1000件単位のbatch削除を行う。
+        30,
+    )
+    adminWorksFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['ssm:GetParameter'],
+            resources: [
+                parameterArn(scope, props.adminSigningKeyParameterName),
+            ],
+        }),
+    )
+    adminWorksFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['s3:ListBucket'],
+            resources: [props.mangaBucket.bucketArn],
+            conditions: { StringLike: { 's3:prefix': ['manga/*'] } },
+        }),
+    )
+    adminWorksFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['s3:GetObject', 's3:PutObject'],
+            resources: [props.mangaBucket.arnForObjects('manga/index.json')],
+        }),
+    )
+    // 削除対象は検証済みworkIdの `manga/{workId}/` 配下だけ。Bucket自体は削除できない。
+    adminWorksFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+            actions: ['s3:DeleteObject'],
+            resources: [props.mangaBucket.arnForObjects('manga/*')],
+        }),
+    )
     completeUploadFunction.addToRolePolicy(
         new iam.PolicyStatement({
             actions: ['s3:ListBucket'],
@@ -275,6 +317,22 @@ export function createMangaApi(
             completeUploadFunction,
         ),
     })
+    httpApi.addRoutes({
+        path: '/api/admin/works',
+        methods: [apigatewayv2.HttpMethod.GET],
+        integration: new HttpLambdaIntegration(
+            'AdminWorksListIntegration',
+            adminWorksFunction,
+        ),
+    })
+    httpApi.addRoutes({
+        path: '/api/admin/works/{workId}',
+        methods: [apigatewayv2.HttpMethod.DELETE],
+        integration: new HttpLambdaIntegration(
+            'AdminWorksDeleteIntegration',
+            adminWorksFunction,
+        ),
+    })
 
     // DBなしの簡易認証なので、API全体へ小さなthrottleを設けて連続試行を抑える。
     // 数人だけのサイトでは5 req/s、burst 10で通常操作を妨げない。
@@ -293,5 +351,5 @@ export function createMangaApi(
         ),
     })
 
-    return { httpApi }
+    return { httpApi, adminWorksFunction }
 }

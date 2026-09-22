@@ -31,7 +31,10 @@ export function createAdminSessionCookie(
         nonce: randomBytes(16).toString('base64url'),
     }
     const encodedPayload = encode(JSON.stringify(payload))
-    return `${ADMIN_COOKIE_NAME}=${encodedPayload}.${sign(encodedPayload, signingKey)}; ${ADMIN_COOKIE_ATTRIBUTES}`
+    // payloadの署名期限とBrowserの永続Cookie期限を同じ時刻に揃える。
+    // これによりBrowserを閉じても期限まではsessionを維持し、server側検証も省略しない。
+    const expires = new Date(expiresAtEpochSeconds * 1000).toUTCString()
+    return `${ADMIN_COOKIE_NAME}=${encodedPayload}.${sign(encodedPayload, signingKey)}; ${ADMIN_COOKIE_ATTRIBUTES}; Expires=${expires}`
 }
 
 export function createExpiredAdminSessionCookie(): string {

@@ -71,7 +71,7 @@ watch(
                 aria-label="作品一覧へ戻る"
             >
                 <img src="@/assets/images/fire.gif" alt="" />
-                <span>Novels</span>
+                <span>漫画</span>
             </router-link>
 
             <button class="AppHeader__logout" type="button" @click="logout">

@@ -6,8 +6,8 @@ export const SIGNED_COOKIE_NAMES = [
     'CloudFront-Key-Pair-Id',
 ] as const
 
-export const DEFAULT_SIGNED_COOKIE_TTL_SECONDS = 24 * 60 * 60
-export const DEFAULT_ADMIN_SESSION_TTL_SECONDS = 60 * 60
+export const DEFAULT_SIGNED_COOKIE_TTL_SECONDS = 30 * 24 * 60 * 60
+export const DEFAULT_ADMIN_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 // Login APIが受け取るのは短いpasswordだけなので、巨大なJSONを早い段階で拒否する。
 export const MAX_REQUEST_BODY_BYTES = 4096
 
