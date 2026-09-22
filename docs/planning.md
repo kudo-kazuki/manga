@@ -364,7 +364,8 @@
 ### 5.4 管理ログイン・管理route
 
 - [x] `/admin/login` を実装する。
-- [x] `/admin` を実装する。
+- [x] `/admin` を管理menuとして実装する。
+- [x] 漫画アップロード画面を`/admin/upload`へ分離する。
 - [x] 閲覧ログインと管理ログインを明確に分ける。
 - [x] 管理CookieをJavaScriptから読まない。
 - [x] Presignの401/403で管理ログインへ誘導する。

@@ -96,7 +96,7 @@ const confirmDelete = async () => {
                 <p>ADMIN</p>
                 <h1>作品削除</h1>
             </div>
-            <router-link to="/admin">アップロード画面へ</router-link>
+            <router-link to="/admin">管理メニューへ</router-link>
         </header>
 
         <p class="DeletePage__notice">

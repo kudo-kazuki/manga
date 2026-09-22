@@ -18,6 +18,7 @@ cdk.out
 .env.localtest
 .env.production
 /frontend/.env.local
+/frontend/.env.deploy.local
 scripts/ftp.deploy.json
 src/config/auth.local.json
 

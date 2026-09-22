@@ -317,6 +317,20 @@
 - 続くBrowser再現で、runner自身が`npm.cmd`を直接spawnして`EINVAL`となっていることを確認。runnerもGatherModokiと同じ`cmd.exe /c npm run <fixed job>`方式へ修正した。
 - `cmd.exe /c npm --version`のNode child process起動成功、Frontend typecheckとlint成功を確認。既に起動中のrunnerはNode processのため、この修正を反映するには利用者側でrunnerを再起動する必要がある。
 
+### 2026-09-22 — deploy先account設定のGit管理外移動（未deploy）
+
+- local deploy scriptsに書かれていた固定AWS account IDを削除した。
+- `frontend/.env.deploy.local`（Git無視）または`MANGA_DEPLOY_ACCOUNT_ID`環境変数から12桁のaccount IDを取得して、AWS caller identityと照合する。
+- `.env.deploy.local.example`は空のplaceholderだけを追跡し、実値fileがGit追跡されないことを確認した。
+- Frontend lintと38 tests成功。既存runnerはjob開始時に更新済みscriptを別processで読むため、account設定変更だけならrunner再起動は不要。
+
+### 2026-09-22 — 管理menuへの分離（未deploy）
+
+- `/admin`を管理menuへ変更し、従来のupload画面を`/admin/upload`へ移動した。
+- 管理menuからアップロード、作品削除、local環境だけのdeploy consoleへ遷移できるようにした。
+- 管理session確認とlogoutは従来どおり`/admin`で維持し、productionではdeploy console linkを表示しない。
+- Frontend typecheck、lint、38 tests、production buildが成功。Chromiumで管理login後のmenu、`/admin/upload`、`/admin/delete`、local deploy console linkを確認し、upload/delete/deploy操作は実行していない。
+
 ## 中断時の再開手順
 
 1. `git status --short` と本書の最後の実行ログを確認する。

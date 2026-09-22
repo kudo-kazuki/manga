@@ -70,6 +70,8 @@ Copy-Item .env.local.example .env.local
 
 ```powershell
 cd D:\manga\frontend
+Copy-Item .env.deploy.local.example .env.deploy.local
+# .env.deploy.localのMANGA_DEPLOY_ACCOUNT_IDへ12桁のdeploy先AWS account IDを設定する。
 $env:AWS_PROFILE = 'your-aws-profile'
 & 'C:\Program Files\nodejs\npm.cmd' run dev:deploy-console
 ```
@@ -79,7 +81,7 @@ $env:AWS_PROFILE = 'your-aws-profile'
 - **Backend Lambdaを更新**: `backend/`をbundleし、既存8 Lambdaのコードだけを更新します。CloudFormation/CDK、IAM、環境変数、API route、S3、CloudFront設定は変更しません。これらを変えた場合は通常のCDK deployを手動で行います。
 - **Frontendを配信**: `frontend`をbuildし、既存Frontend Bucketへupload後、CloudFront invalidationを1件要求します。漫画Bucketやインフラ設定は変更しません。古いhash付きassetは白画面防止のため削除しません。
 
-どちらのジョブも対象AWS account `702347290971`を確認し、違うaccountのcredentialでは停止します。
+どちらのジョブもGit無視の`.env.deploy.local`に設定したAWS accountを確認し、違うaccountのcredentialでは停止します。
 
 Presigned PUTはBrowserからS3へ直接送るため、Manga BucketのCORSではdeploy済みCloudFront originに加えて`http://localhost:4646`だけを許可します。任意originを許可する`*`は使用しません。`.env.local`は環境固有値なのでGit無視対象です。
 
@@ -259,12 +261,13 @@ $publicKeyPem = Get-Content -LiteralPath ..\secrets\cloudfront-public.pem -Raw
 
 1. `SiteUrl/admin/login`を開く。
 2. 管理用passwordでログインする。
-3. 作品folderを一度dropする。
-4. 作品名、chapter数、page数、容量、警告を確認する。
-5. 必要ならWebP qualityを変更し、「WebP変換・Upload開始」を押す。
-6. 失敗があれば`Retry failed files`を押す。Pause/Resumeは同一Browser session内で利用できる。
-7. 全画像成功後、BackendがS3上の画像を再確認して`metadata.json`と`index.json`を確定する。
-8. 「作品ページを開く」から閲覧を確認する。閲覧用passwordでのログインは管理認証とは別に必要。
+3. 管理メニューで「漫画アップロード」を選ぶ。
+4. 作品folderを一度dropする。
+5. 作品名、chapter数、page数、容量、警告を確認する。
+6. 必要ならWebP qualityを変更し、「WebP変換・Upload開始」を押す。
+7. 失敗があれば`Retry failed files`を押す。Pause/Resumeは同一Browser session内で利用できる。
+8. 全画像成功後、BackendがS3上の画像を再確認して`metadata.json`と`index.json`を確定する。
+9. 「作品ページを開く」から閲覧を確認する。閲覧用passwordでのログインは管理認証とは別に必要。
 
 ## 漫画削除
 

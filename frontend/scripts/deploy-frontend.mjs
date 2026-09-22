@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { deployAccountId } from './deploy-config.mjs'
 
 const REGION = 'ap-northeast-1'
-const ACCOUNT_ID = '702347290971'
 const STACK_NAME = 'MangaStack'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const frontendRoot = path.resolve(__dirname, '..')
@@ -37,9 +37,9 @@ function assertExpectedAccount() {
             capture: true,
         }),
     )
-    if (identity.Account !== ACCOUNT_ID) {
+    if (identity.Account !== deployAccountId) {
         throw new Error(
-            `AWS account ${identity.Account ?? 'unknown'} は対象外です。${ACCOUNT_ID}だけを許可します。`,
+            `AWS account ${identity.Account ?? 'unknown'} は対象外です。設定されたdeploy先accountだけを許可します。`,
         )
     }
 }
